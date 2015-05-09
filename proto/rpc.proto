@@ -1,0 +1,11 @@
+enum MsgType {
+  ANNOUNCE = 1;
+  PING = 2;
+  PONG = 3;
+}
+
+message Msg {
+  required MsgType type  = 1;
+  required uint32 hops = 2;
+  required string payload = 3;
+}
