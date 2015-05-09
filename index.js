@@ -70,6 +70,13 @@ Peernet.prototype.createStream = function () {
     var id = self._id ++;
     var timeout = setTimeout(expire, 15*1000);
     
+    setInterval(function () {
+        var keys = Object.keys(self._known);
+        var key = keys[Math.floor(Math.random() * keys.length)];
+        var m = self._known[key];
+        self._announce(id, m.hops + 1, m.payload)
+    }, 5000);
+    
     self._output[id] = through.obj(function (msg, enc, next) {
         this.push(decoder.Msg.encode(msg));
         next();

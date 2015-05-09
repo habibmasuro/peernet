@@ -1,7 +1,5 @@
 enum MsgType {
   ANNOUNCE = 1;
-  PING = 2;
-  PONG = 3;
 }
 
 message Msg {
