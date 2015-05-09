@@ -28,10 +28,18 @@ function Peernet (opts) {
     var hrefs = opts.bootstrap || [];
     if (!isarray(hrefs)) hrefs = [ hrefs ];
     hrefs.forEach(function (href) {
-        var c = self._connect(href);
-        c.pipe(self.createStream()).pipe(c);
+        self.connect(href);
     });
 }
+
+Peernet.prototype.connect = function (href) {
+    var c = this._connect(href);
+    c.pipe(this.createStream()).pipe(c);
+};
+
+Peernet.prototype.connections = function () {
+    return Object.keys(this._output);
+};
 
 Peernet.prototype._connect = function (href) {
     var self = this;

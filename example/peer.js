@@ -12,7 +12,7 @@ var peernet = require('../');
 var pn = peernet({
     bootstrap: argv.bootstrap,
     debug: argv.debug,
-    transport: require('./transport.js')
+    transport: require('../lib/transport.js')
 });
 
 var server = http.createServer(function (req, res) { res.end('...\n') });
