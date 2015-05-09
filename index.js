@@ -4,6 +4,7 @@ var lenpre = require('length-prefixed-stream');
 var through = require('through2');
 var duplexer = require('duplexer2');
 var isarray = require('isarray');
+var sprintf = require('sprintf');
 
 var protobuf = require('protocol-buffers');
 var fs = require('fs');
@@ -19,7 +20,9 @@ function Peernet (opts) {
     self._id = 0;
     self._advertised = {};
     self._output = {};
+    self._known = {};
     self._transport = opts.transport;
+    if (!opts.debug) self._debug = function () {};
     
     var hrefs = opts.bootstrap || [];
     if (!isarray(hrefs)) hrefs = [ hrefs ];
@@ -33,6 +36,10 @@ Peernet.prototype.connect = function (href) {
     return this._transport(href);
 };
 
+Peernet.prototype._debug = function () {
+    console.error(sprintf.apply(null, arguments));
+};
+
 Peernet.prototype.advertise = function (ref) {
     var self = this;
     self._advertised[ref] = true;
@@ -43,7 +50,6 @@ Peernet.prototype.advertise = function (ref) {
 
 Peernet.prototype._announce = function (id, ref) {
     this._output[id].write({
-        //type: 'ANNOUNCE',
         type: decoder.MsgType.ANNOUNCE,
         hops: 0,
         payload: ref
@@ -71,7 +77,10 @@ Peernet.prototype.createStream = function () {
     
     function write (buf, enc, next) {
         var msg = decoder.Msg.decode(buf);
-        console.log('msg=', msg);
+        if (msg.type === decoder.MsgType.ANNOUNCE) {
+            self._known[msg.payload] = msg;
+            self._debug('announce: %s', JSON.stringify(msg));
+        }
         next();
     }
     function end () {}
