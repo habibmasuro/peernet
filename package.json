@@ -1,0 +1,47 @@
+{
+  "name": "peernet",
+  "version": "1.0.0",
+  "description": "peer to peer gossip network using randomized algorithms",
+  "main": "index.js",
+  "directories": {
+    "example": "example",
+    "test": "test"
+  },
+  "dependencies": {
+    "duplexer2": "^0.0.2",
+    "has": "^1.0.0",
+    "inherits": "^2.0.1",
+    "isarray": "^0.0.1",
+    "length-prefixed-stream": "^1.1.0",
+    "level": "^0.19.1",
+    "minimist": "^1.1.1",
+    "protocol-buffers": "^3.0.0",
+    "simple-peer": "^5.4.3",
+    "sprintf": "^0.1.5",
+    "through2": "^0.6.5",
+    "transport-stream": "^1.1.0",
+    "websocket-stream": "^1.5.0",
+    "wrtc": "^0.0.55"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "tape test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/substack/peernet.git"
+  },
+  "keywords": [
+    "p2p",
+    "gossip",
+    "network",
+    "distributed",
+    "randpeer"
+  ],
+  "author": "substack",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/substack/peernet/issues"
+  },
+  "homepage": "https://github.com/substack/peernet#readme"
+}
