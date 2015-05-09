@@ -26,12 +26,12 @@ for (var i = 0; i < 10; i++) (function () {
 function ready () {
     var hrefs = Object.keys(nodes);
     var bootstrap = [
-        'ws://1.0.0.0:5000', // invalid
-        'ws://1.0.0.1:1234', // invalid
+        //'ws://1.0.0.0:5000', // invalid
+        //'ws://1.0.0.1:1234', // invalid
         hrefs[0],
-        'ws://1.0.0.2:6006', // invalid
+        //'ws://1.0.0.2:6006', // invalid
         hrefs[3],
-        'ws://1.0.0.3:7809', // invalid
+        //'ws://1.0.0.3:7809', // invalid
         hrefs[6],
         hrefs[7]
     ];

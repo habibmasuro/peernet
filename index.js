@@ -34,11 +34,14 @@ function Peernet (opts) {
 
 Peernet.prototype.connect = function (href) {
     var c = this._connect(href);
-    c.pipe(this.createStream()).pipe(c);
+    c.pipe(this.createStream(href)).pipe(c);
 };
 
 Peernet.prototype.connections = function () {
-    return Object.keys(this._output);
+    var self = this;
+    return Object.keys(self._output).map(function (id) {
+        return self._output[id].href;
+    });
 };
 
 Peernet.prototype._connect = function (href) {
@@ -61,7 +64,7 @@ Peernet.prototype._connect = function (href) {
     function retry_ () {
         var c0 = self._connect(href);
         var done = false;
-        c0.pipe(self.createStream()).pipe(c);
+        c0.pipe(self.createStream(href)).pipe(c);
         c0.once('data', function () {
             if (done) return c0.destroy();
             done = true;
@@ -79,7 +82,7 @@ Peernet.prototype._connect = function (href) {
         if (keys.length) {
             var key = keys[Math.floor(Math.random() * keys.length)];
             var c1 = self._connect(key);
-            c1.pipe(self.createStream()).pipe(c);
+            c1.pipe(self.createStream(key)).pipe(c);
             c1.once('data', function () {
                 if (done) return c1.destroy();
                 done = true;
@@ -113,7 +116,7 @@ Peernet.prototype._announce = function (id, hops, ref) {
     });
 };
 
-Peernet.prototype.createStream = function () {
+Peernet.prototype.createStream = function (href) {
     var self = this;
     var id = self._id ++;
     var timeout = setTimeout(expire, 15*1000);
@@ -130,6 +133,7 @@ Peernet.prototype.createStream = function () {
         this.push(decoder.Msg.encode(msg));
         next();
     });
+    self._output[id].href = href;
     
     Object.keys(self._advertised).forEach(function (key) {
         self._announce(id, 0, key);
