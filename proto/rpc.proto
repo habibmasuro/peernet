@@ -5,5 +5,5 @@ enum MsgType {
 message Msg {
   required MsgType type  = 1;
   required uint32 hops = 2;
-  required string payload = 3;
+  required bytes payload = 3;
 }

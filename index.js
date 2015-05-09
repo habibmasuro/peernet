@@ -143,21 +143,22 @@ Peernet.prototype.createStream = function () {
         catch (err) { return expire() }
         
         if (msg.type === decoder.MsgType.ANNOUNCE) {
-            if (!has(self._known, msg.payload)) {
+            var ref = msg.payload.toString();
+            if (!has(self._known, ref)) {
                 if (msg.hops <= 10) {
                     Object.keys(self._output).forEach(function (key) {
                         if (Number(key) === id) return;
-                        self._announce(id, msg.hops + 1, msg.payload);
+                        self._announce(id, msg.hops + 1, ref);
                     });
                 }
-                self._known[msg.payload] = msg;
+                self._known[ref] = msg;
             }
             else {
-                self._known[msg.payload].hops = Math.min(
-                    msg.hops, self._known[msg.payload].hops
+                self._known[ref].hops = Math.min(
+                    msg.hops, self._known[ref].hops
                 );
             }
-            self._debug('announce: %s', JSON.stringify(msg));
+            self._debug('announce: { hops: %d, ref: %s }', msg.hops, ref);
         }
         next();
     }
