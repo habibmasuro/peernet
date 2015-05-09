@@ -1,6 +1,6 @@
 # peernet
 
-peer to peer network based on randomized algorithms
+peer to peer gossip network based on randomized algorithms
 
 https://www.youtube.com/watch?v=RV4f5vHFavs
 
@@ -8,7 +8,7 @@ https://www.youtube.com/watch?v=RV4f5vHFavs
 
 Don't use this project until the simulations are more fleshed out.
 
-# goals
+# objective
 
 This library isn't meant to do very much except for:
 
@@ -23,3 +23,8 @@ connections.
 
 The application subnet could be anything: a p2p chat relay, live stream, DHT, or
 another peernet.
+
+# goals
+
+* Build a [2-layer gossip network](https://github.com/ssbc/scuttlebot/issues/172#issuecomment-100410637)
+for webrtc peer introductions.
