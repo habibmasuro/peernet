@@ -14,12 +14,16 @@ for (var i = 0; i < 10; i++) (function () {
     
     var server = http.createServer(function (req, res) { res.end('...\n') });
     server.listen(0, function () {
-        var href = 'ws://localhost:' + server.address().port;
+        var href = 'ws://127.0.0.1:' + server.address().port;
         nodes[href] = node;
         if (--pending === 0) ready();
     });
     wsock.createServer({ server: server }, function (stream) {
-        stream.pipe(node.createStream()).pipe(stream);
+        var href = 'ws://'
+            + stream.socket._socket.remoteAddress.split(':').slice(-1)[0]
+            + ':' + stream.socket._socket.remotePort
+        ;
+        stream.pipe(node.createStream(href)).pipe(stream);
     });
 })();
 
@@ -52,6 +56,7 @@ function monitor () {
         var node = nodes[href];
         node.connections().forEach(visit);
     })(Object.keys(nodes)[0]);
+console.log(visited); 
     
     if (Object.keys(visited).length !== Object.keys(nodes).length) {
         console.log('SPLIT');
