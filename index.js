@@ -34,15 +34,54 @@ function Peernet (opts) {
 }
 
 Peernet.prototype._connect = function (href) {
-    var c = this._transport(href);
-    c.once('close', function () {
-        
-    });
+    var self = this;
+    var c = self._transport(href);
+    var retrying = false;
+    c.once('error', retry);
+    c.once('close', retry);
+    var m = self._known[href];
     return c;
-};
-
-Peernet.prototype._next = function () {
-    self.store
+    
+    function retry () {
+        if (retrying) return;
+        retrying = true;
+        delete self._known[href];
+        // retry race between a new connection
+        // and the previously working connection
+        setTimeout(retry_, 1000);
+    }
+    function retry_ () {
+        var c0 = self._connect(href);
+        var done = false;
+        c0.pipe(self.createStream()).pipe(c);
+        c0.once('data', function () {
+            if (done) return c0.destroy();
+            done = true;
+            self._known[href] = m;
+        });
+        c0.once('error', function () {
+            if (done) return;
+            done = true;
+            retry();
+        });
+        
+        var keys = Object.keys(self._known).filter(function (key) {
+            return key !== href;
+        });
+        if (keys.length) {
+            var key = keys[Math.floor(Math.random() * keys.length)];
+            var c1 = self._connect(key);
+            c1.pipe(self.createStream()).pipe(c);
+            c1.once('data', function () {
+                if (done) return c1.destroy();
+                done = true;
+            });
+            c1.once('error', function () {
+                if (done) return;
+                done = true;
+            });
+        }
+    }
 };
 
 Peernet.prototype._debug = function () {
@@ -58,6 +97,7 @@ Peernet.prototype.advertise = function (ref) {
 };
 
 Peernet.prototype._announce = function (id, hops, ref) {
+    if (!this._output[id]) return;
     this._output[id].write({
         type: decoder.MsgType.ANNOUNCE,
         hops: hops,
@@ -70,10 +110,11 @@ Peernet.prototype.createStream = function () {
     var id = self._id ++;
     var timeout = setTimeout(expire, 15*1000);
     
-    setInterval(function () {
+    var iv = setInterval(function () {
         var keys = Object.keys(self._known);
         var key = keys[Math.floor(Math.random() * keys.length)];
         var m = self._known[key];
+        if (!m) return;
         self._announce(id, m.hops + 1, m.payload)
     }, 5000);
     
@@ -98,7 +139,9 @@ Peernet.prototype.createStream = function () {
     function write (buf, enc, next) {
         if (closed) return;
         reset();
-        var msg = decoder.Msg.decode(buf);
+        try { var msg = decoder.Msg.decode(buf) }
+        catch (err) { return expire() }
+        
         if (msg.type === decoder.MsgType.ANNOUNCE) {
             if (!has(self._known, msg.payload)) {
                 if (msg.hops <= 10) {
@@ -123,6 +166,7 @@ Peernet.prototype.createStream = function () {
     
     function expire () {
         if (closed) return;
+        clearInterval(iv);
         delete self._output[id];
         closed = true;
         dup.emit('close');
