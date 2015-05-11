@@ -7,6 +7,8 @@ var argv = minimist(process.argv.slice(2), {
     alias: { p: 'port', b: 'bootstrap', d: 'debug' },
     default: { port: 0 }
 });
+var level = require('level');
+var db = level(argv.db);
 
 var peernet = require('../');
 var pn = peernet(null, {

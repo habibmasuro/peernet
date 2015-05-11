@@ -8,6 +8,7 @@
     "test": "test"
   },
   "dependencies": {
+    "concat-map": "0.0.1",
     "duplexer2": "^0.0.2",
     "has": "^1.0.0",
     "inherits": "^2.0.1",

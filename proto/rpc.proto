@@ -1,5 +1,5 @@
 message NodeRequest {
-  required uint32 size = 1;
+  optional uint32 limit = 1;
   optional bool follow = 2 [default = false];
 }
 

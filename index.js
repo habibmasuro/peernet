@@ -7,6 +7,7 @@ var isarray = require('isarray');
 var sprintf = require('sprintf');
 var has = require('has');
 var crypto = require('crypto');
+var concatMap = require('concat-map');
 
 var memdown = require('memdown');
 var levelup = require('levelup');
@@ -40,9 +41,10 @@ Peernet.prototype._debug = function () {
 
 Peernet.prototype.getNodes = function (addr, size, opts) {
     if (!opts) opts = {};
+    var id = this._ids[addr] ++;
     this._streams[addr].write(decoder.Message.encode({
         request: {
-            id: this._ids[addr] ++,
+            id: id,
             node: {
                 size: size,
                 follow: Boolean(opts.follow)
@@ -50,6 +52,7 @@ Peernet.prototype.getNodes = function (addr, size, opts) {
         }
     }));
     var res = new EventEmitter;
+    this._response[id] = res;
     return res;
 };
 
@@ -95,6 +98,28 @@ Peernet.prototype.connect = function (addr) {
     }
 };
 
+Peernet.prototype._saveNodes = function (nodes, cb) {
+    this.db.batch(concatMap(nodes, function (node) {
+        return [
+            {
+                type: 'put',
+                key: 'node!',
+                value: ''
+            },
+            {
+                type: 'put',
+                key: 'node!',
+                value: ''
+            },
+            {
+                type: 'put',
+                key: 'node!',
+                value: ''
+            }
+        ]
+    }), cb);
+};
+
 Peernet.prototype.createStream = function (id) {
     var self = this;
     var input = lenpre.decode();
@@ -110,19 +135,22 @@ Peernet.prototype.createStream = function (id) {
     return dup;
     
     function write (buf, enc, next) {
-console.log('write', buf);
         if (closed) return;
         try { var msg = decoder.Message.decode(buf) }
         catch (err) {
             self._debug('decoder error: ' + err);
             return destroy()
         }
-console.log('msg=', msg); 
         
         if (msg.request && msg.request.close) {
             throw new Error('todo: close request');
         }
         else if (msg.request && msg.request.node) {
+            self.db.createReadStream({
+                gt: 'node!',
+                lt: 'node!',
+                limit: msg.request.node.limit,
+            });
             throw new Error('todo: node request');
         }
         else if (msg.request && msg.request.search) {
