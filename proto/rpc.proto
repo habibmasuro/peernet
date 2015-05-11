@@ -1,9 +1,35 @@
-enum MsgType {
-  ANNOUNCE = 1;
+message NodeRequest {
+  required uint32 size = 1;
+  optional bool follow = 2 [default = false];
 }
 
-message Msg {
-  required MsgType type  = 1;
+message NodeResponse {
+  required bytes address = 1;
+}
+
+message SearchRequest {
+  required bytes hash = 1;
   required uint32 hops = 2;
-  required bytes payload = 3;
+}
+
+message SearchResponse {
+  required bytes hash = 1;
+  required bytes address = 2;
+}
+
+message Request {
+  uint32 id = 1;
+  oneof request {
+    bool close = 2;
+    NodeRequest node = 3;
+    SearchRequest search = 4;
+  }
+}
+
+message Response {
+  uint32 id = 1;
+  oneof response {
+    NodeResponse node = 2;
+    SearchResponse search = 3;
+  }
 }
