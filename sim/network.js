@@ -56,7 +56,6 @@ function monitor () {
         var node = nodes[href];
         node.connections().forEach(visit);
     })(Object.keys(nodes)[0]);
-console.log(visited); 
     
     if (Object.keys(visited).length !== Object.keys(nodes).length) {
         console.log('SPLIT');

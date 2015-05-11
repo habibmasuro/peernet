@@ -15,21 +15,25 @@ message SearchRequest {
 message SearchResponse {
   required bytes hash = 1;
   required bytes address = 2;
+  required uint32 hops = 3;
+}
+
+message CloseRequest {}
+
+message Message {
+  optional Request request = 1;
+  optional Response response = 2;
 }
 
 message Request {
-  uint32 id = 1;
-  oneof request {
-    bool close = 2;
-    NodeRequest node = 3;
-    SearchRequest search = 4;
-  }
+  required uint32 id = 1;
+  optional CloseRequest close = 2;
+  optional NodeRequest node = 3;
+  optional SearchRequest search = 4;
 }
 
 message Response {
-  uint32 id = 1;
-  oneof response {
-    NodeResponse node = 2;
-    SearchResponse search = 3;
-  }
+  required uint32 id = 1;
+  optional NodeResponse node = 2;
+  optional SearchResponse search = 3;
 }

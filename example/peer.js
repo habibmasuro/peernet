@@ -9,10 +9,19 @@ var argv = minimist(process.argv.slice(2), {
 });
 
 var peernet = require('../');
-var pn = peernet({
+var pn = peernet(null, {
     bootstrap: argv.bootstrap,
     debug: argv.debug,
     transport: require('../lib/transport.js')
+});
+
+pn.on('connect', function (addr, c) {
+    var iv = setInterval(function () {
+        pn.getNodes(addr, 10).on('node', function (node) {
+            console.log('got node:', node);
+        });
+    }, 1 * 1000);
+    c.once('disconnect', function () { clearInterval(iv) });
 });
 
 var server = http.createServer(function (req, res) { res.end('...\n') });
