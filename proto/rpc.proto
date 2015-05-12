@@ -19,6 +19,7 @@ message SearchResponse {
 }
 
 message CloseRequest {}
+message CloseResponse {}
 
 message Message {
   optional Request request = 1;
@@ -27,13 +28,14 @@ message Message {
 
 message Request {
   required uint32 id = 1;
-  optional CloseRequest close = 2;
+  optional bool close = 2;
   optional NodeRequest node = 3;
   optional SearchRequest search = 4;
 }
 
 message Response {
   required uint32 id = 1;
-  optional NodeResponse node = 2;
-  optional SearchResponse search = 3;
+  optional bool close = 2;
+  optional NodeResponse node = 3;
+  optional SearchResponse search = 4;
 }

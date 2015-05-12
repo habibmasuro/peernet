@@ -9,12 +9,16 @@ var has = require('has');
 var crypto = require('crypto');
 var concatMap = require('concat-map');
 
+function sha (buf) { return crypto.createHash('sha512').update(buf).digest() }
+
 var memdown = require('memdown');
 var levelup = require('levelup');
 
 var protobuf = require('protocol-buffers');
 var fs = require('fs');
 var decoder = protobuf(fs.readFileSync(__dirname + '/proto/rpc.proto'));
+
+var ring = require('./lib/ring.js');
 
 module.exports = Peernet;
 inherits(Peernet, EventEmitter);
@@ -28,6 +32,8 @@ function Peernet (db, opts) {
     this._streams = {};
     this._connections = {};
     this._ids = {};
+    this._response = {};
+    
     if (!opts.debug) this._debug = function () {};
     
     var bootstrap = opts.bootstrap || [];
@@ -99,22 +105,13 @@ Peernet.prototype.connect = function (addr) {
 };
 
 Peernet.prototype._saveNodes = function (nodes, cb) {
-    this.db.batch(concatMap(nodes, function (node) {
+    this.db.batch(concatMap(nodes, function (addr) {
+        var key = sha(addr);
         return [
             {
                 type: 'put',
-                key: 'node!',
-                value: ''
-            },
-            {
-                type: 'put',
-                key: 'node!',
-                value: ''
-            },
-            {
-                type: 'put',
-                key: 'node!',
-                value: ''
+                key: 'addr!' + key,
+                value: node.address
             }
         ]
     }), cb);
@@ -146,17 +143,40 @@ Peernet.prototype.createStream = function (id) {
             throw new Error('todo: close request');
         }
         else if (msg.request && msg.request.node) {
-            self.db.createReadStream({
-                gt: 'node!',
-                lt: 'node!',
+            var rhex = Math.floor(Math.random() * 16).toString(16);
+            var r = ring(self.db, {
+                first: 'addr!',
+                ge: 'addr!' + rhex,
                 limit: msg.request.node.limit,
             });
-            throw new Error('todo: node request');
+            r.pipe(through.obj(
+                function (addr, enc, next) {
+                    output.write(decoder.Message.encode({
+                        response: {
+                            id: msg.request.id,
+                            node: { address: addr }
+                        }
+                    }));
+                    next();
+                },
+                function (next) {
+                    output.write(decoder.Message.encode({
+                        response: {
+                            id: msg.request.id,
+                            close: true
+                        }
+                    }));
+                    next();
+                }
+            ));
+            //throw new Error('todo: node request');
         }
         else if (msg.request && msg.request.search) {
             throw new Error('todo: search request');
         }
-        else if (msg.response && msg.response.node) {
+        else if (msg.response) {
+console.log('RESONSES=', self._response); 
+console.log('msg.response=', msg.response);
             throw new Error('todo: response request');
         }
         next();

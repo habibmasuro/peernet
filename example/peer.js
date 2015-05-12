@@ -11,7 +11,7 @@ var level = require('level');
 var db = level(argv.db);
 
 var peernet = require('../');
-var pn = peernet(null, {
+var pn = peernet(db, {
     bootstrap: argv.bootstrap,
     debug: argv.debug,
     transport: require('../lib/transport.js')
