@@ -118,6 +118,76 @@ Peernet.prototype._saveNodes = function (nodes, cb) {
     }), cb);
 };
 
+Peernet.prototype._logStats = function (addr, stats, cb) {
+    var key = sha(addr);
+    this.db.batch([
+        {
+            type: 'put',
+            key: 'stats!' + key + '!' + new Date().toISOString(),
+            value: JSON.stringify(stats)
+        }
+    ], cb);
+};
+
+Peernet.prototype._logConnection = function (addr, stats, cb) {
+    var key = sha(addr);
+    this.db.batch([
+        {
+            type: 'put',
+            key: 'con!' + key + '!' + new Date().toISOString(),
+            value: JSON.stringify(stats)
+        }
+    ], cb);
+};
+
+Peernet.prototype._purge = function () {
+    throw new Error('todo: purge');
+};
+
+Peernet.prototype.getStats = function (addr, cb) {
+    var key = sha(addr);
+    var pending = 2;
+    cb = once(cb || function () {});
+    
+    var stats = {
+        connections: { ok: 0, fail: 0 },
+        nodes: { rx: 0, tx: 0 }
+    };
+    var s = this.db.createReadStream({
+        gt: 'stats!' + addr,
+        lt: 'stats!' + addr
+    });
+    s.once('error', cb);
+    s.pipe(through.obj(swrite, done));
+    
+    var c = this.db.createReadStream({
+        gt: 'con!' + key + '!',
+        lt: 'con!' + key + '!'
+    });
+    c.once('error', cb);
+    c.pipe(through.obj(cwrite, done));
+    
+    function swrite (buf, enc, next) {
+        try { var row = JSON.parse(buf) }
+        catch (err) { return this.emit('error', err) }
+        stats.nodes.rx += Number(row.rx) || 0;
+        stats.nodes.tx += Number(row.tx) || 0;
+        next();
+    }
+    function cwrite (buf, enc, next) {
+        try { var row = JSON.parse(buf) }
+        catch (err) { return this.emit('error', err) }
+        stats.connections.ok += row.ok ? 1 : 0;
+        stats.connections.fail += row.fail ? 1 : 0;
+        next();
+    }
+    
+    function done () {
+        if (-- pending !== 0) return;
+        cb(null, stats);
+    }
+};
+
 Peernet.prototype.createStream = function (id) {
     var self = this;
     var input = lenpre.decode();
@@ -151,11 +221,11 @@ Peernet.prototype.createStream = function (id) {
                 limit: msg.request.node.limit,
             });
             r.pipe(through.obj(
-                function (addr, enc, next) {
+                function (row, enc, next) {
                     output.write(decoder.Message.encode({
                         response: {
                             id: msg.request.id,
-                            node: { address: addr }
+                            node: row.address
                         }
                     }));
                     next();
