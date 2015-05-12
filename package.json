@@ -17,6 +17,7 @@
     "level": "^0.19.1",
     "minimist": "^1.1.1",
     "protocol-buffers": "^3.0.0",
+    "read-only-stream": "^1.1.1",
     "simple-peer": "^5.4.3",
     "sprintf": "^0.1.5",
     "through2": "^0.6.5",

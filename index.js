@@ -8,6 +8,7 @@ var sprintf = require('sprintf');
 var has = require('has');
 var crypto = require('crypto');
 var concatMap = require('concat-map');
+var readonly = require('read-only-stream');
 
 function sha (buf) { return crypto.createHash('sha512').update(buf).digest() }
 
@@ -57,9 +58,9 @@ Peernet.prototype.getNodes = function (addr, size, opts) {
             }
         }
     }));
-    var res = new EventEmitter;
+    var res = through.obj();
     this._response[id] = res;
-    return res;
+    return readonly(res);
 };
 
 Peernet.prototype.advertise = function (addr) {
@@ -174,10 +175,23 @@ Peernet.prototype.createStream = function (id) {
         else if (msg.request && msg.request.search) {
             throw new Error('todo: search request');
         }
+        else if (msg.response && has(self._response, msg.response.id)
+        && msg.response.node) {
+            self._response[msg.response.id].write({
+                address: msg.response.address
+            });
+        }
+        else if (msg.response && has(self._response, msg.response.id)
+        && msg.response.search) {
+            throw new Error('todo: search response');
+        }
+        else if (msg.response && has(self._response, msg.response.id)
+        && msg.response.close) {
+            self._response[msg.response.id].end();
+        }
         else if (msg.response) {
-console.log('RESONSES=', self._response); 
-console.log('msg.response=', msg.response);
-            throw new Error('todo: response request');
+            self._debug('response %d not open', msg.response.id);
+            destroy();
         }
         next();
     }
@@ -185,5 +199,6 @@ console.log('msg.response=', msg.response);
     function end () {}
     function destroy () {
         closed = true;
+        if (dup.destroy) dup.destroy();
     }
 };
