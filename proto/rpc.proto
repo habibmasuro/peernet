@@ -21,21 +21,34 @@ message SearchResponse {
 message CloseRequest {}
 message CloseResponse {}
 
+message HelloRequest {
+    optional bytes address = 1;
+}
+message HelloResponse {}
+
 message Message {
-  optional Request request = 1;
-  optional Response response = 2;
+  oneof msg {
+    Request request = 1;
+    Response response = 2;
+  }
 }
 
 message Request {
-  required uint32 id = 1;
-  optional bool close = 2;
-  optional NodeRequest node = 3;
-  optional SearchRequest search = 4;
+  required uint32 seq = 1;
+  oneof action {
+    HelloRequest hello = 2;
+    CloseRequest close = 3;
+    NodeRequest node = 4;
+    SearchRequest search = 5;
+  }
 }
 
 message Response {
-  required uint32 id = 1;
-  optional bool close = 2;
-  optional NodeResponse node = 3;
-  optional SearchResponse search = 4;
+  required uint32 seq = 1;
+  oneof reply {
+    HelloResponse hello = 2;
+    CloseResponse close = 3;
+    NodeResponse node = 4;
+    SearchResponse search = 5;
+  }
 }

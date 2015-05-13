@@ -6,7 +6,6 @@ var duplexer = require('duplexer2');
 var isarray = require('isarray');
 var sprintf = require('sprintf');
 var has = require('has');
-var crypto = require('crypto');
 var concatMap = require('concat-map');
 var readonly = require('read-only-stream');
 
@@ -15,11 +14,7 @@ function sha (buf) { return crypto.createHash('sha512').update(buf).digest() }
 var memdown = require('memdown');
 var levelup = require('levelup');
 
-var protobuf = require('protocol-buffers');
-var fs = require('fs');
-var decoder = protobuf(fs.readFileSync(__dirname + '/proto/rpc.proto'));
-
-var ring = require('./lib/ring.js');
+var Peer = require('./lib/peer.js');
 
 module.exports = Peernet;
 inherits(Peernet, EventEmitter);
@@ -30,10 +25,7 @@ function Peernet (db, opts) {
     this.db = db;
     this._options = opts;
     this._transport = opts.transport;
-    this._streams = {};
     this._connections = {};
-    this._ids = {};
-    this._response = {};
     
     if (!opts.debug) this._debug = function () {};
     
@@ -46,62 +38,39 @@ Peernet.prototype._debug = function () {
     console.error(sprintf.apply(null, arguments));
 };
 
-Peernet.prototype.getNodes = function (addr, size, opts) {
-    if (!opts) opts = {};
-    var id = this._ids[addr] ++;
-    this._streams[addr].write(decoder.Message.encode({
-        request: {
-            id: id,
-            node: {
-                size: size,
-                follow: Boolean(opts.follow)
-            }
-        }
-    }));
-    var res = through.obj();
-    this._response[id] = res;
-    return readonly(res);
-};
-
-Peernet.prototype.advertise = function (addr) {
-    // ...
-};
-
-Peernet.prototype.search = function (addr, hash, hops) {
-    this._streams[addr].write(decoder.Message.encode({
-        request: {
-            id: this._ids[addr] ++,
-            search: {
-                hash: hash,
-                hops: hops || 0
-            }
-        }
-    }));
-};
-
 Peernet.prototype.connect = function (addr) {
     var self = this;
     var c = this._transport(addr);
     var closed = false;
+    var hello = false;
+    
     this._connections[addr] = c;
-    c.pipe(this.createStream(addr)).pipe(c);
+    
+    var peer = this.createStream(addr);
+    peer.hello(function () {
+        hello = true;
+        self._logConnection(addr, { ok: true });
+    });
+    
+    c.pipe(peer).pipe(c);
     c.once('error', onend);
     c.once('end', onend);
     
     c.once('connect', function () {
-        self.emit('connect', addr, e);
-        e.emit('connect');
+        self.emit('connect', peer);
+        peer.emit('connect');
     });
-    
-    var e = new EventEmitter;
-    return e;
+    return peer;
     
     function onend () {
         if (closed) return;
         closed = true;
+        if (!hello) {
+            self._logConnection(addr, { ok: false });
+        }
         if (c.destroy) c.destroy();
-        self.emit('disconnect', addr, e);
-        e.emit('disconnect');
+        self.emit('disconnect', peer);
+        peer.emit('disconnect');
     }
 };
 
@@ -155,14 +124,14 @@ Peernet.prototype.getStats = function (addr, cb) {
     };
     var s = this.db.createReadStream({
         gt: 'stats!' + addr,
-        lt: 'stats!' + addr
+        lt: 'stats!' + addr + '!~'
     });
     s.once('error', cb);
     s.pipe(through.obj(swrite, done));
     
     var c = this.db.createReadStream({
         gt: 'con!' + key + '!',
-        lt: 'con!' + key + '!'
+        lt: 'con!' + key + '!~'
     });
     c.once('error', cb);
     c.pipe(through.obj(cwrite, done));
@@ -178,7 +147,7 @@ Peernet.prototype.getStats = function (addr, cb) {
         try { var row = JSON.parse(buf) }
         catch (err) { return this.emit('error', err) }
         stats.connections.ok += row.ok ? 1 : 0;
-        stats.connections.fail += row.fail ? 1 : 0;
+        stats.connections.fail += row.ok ? 0 : 1;
         next();
     }
     
@@ -188,87 +157,23 @@ Peernet.prototype.getStats = function (addr, cb) {
     }
 };
 
-Peernet.prototype.createStream = function (id) {
+Peernet.prototype.createStream = function (addr) {
     var self = this;
-    var input = lenpre.decode();
-    if (!id) id = crypto.randomBytes(16).toString('hex');
-    input.pipe(through(write, end));
-    self._ids[id] = 0;
-    
-    var closed = false;
-    var output = lenpre.encode();
-    self._streams[id] = output;
-    
-    var dup = duplexer(input, output);
-    return dup;
-    
-    function write (buf, enc, next) {
-        if (closed) return;
-        try { var msg = decoder.Message.decode(buf) }
-        catch (err) {
-            self._debug('decoder error: ' + err);
-            return destroy()
-        }
-        
-        if (msg.request && msg.request.close) {
-            throw new Error('todo: close request');
-        }
-        else if (msg.request && msg.request.node) {
-            var rhex = Math.floor(Math.random() * 16).toString(16);
-            var r = ring(self.db, {
-                first: 'addr!',
-                ge: 'addr!' + rhex,
-                limit: msg.request.node.limit,
-            });
-            r.pipe(through.obj(
-                function (row, enc, next) {
-                    output.write(decoder.Message.encode({
-                        response: {
-                            id: msg.request.id,
-                            node: row.address
-                        }
-                    }));
-                    next();
-                },
-                function (next) {
-                    output.write(decoder.Message.encode({
-                        response: {
-                            id: msg.request.id,
-                            close: true
-                        }
-                    }));
-                    next();
-                }
-            ));
-            //throw new Error('todo: node request');
-        }
-        else if (msg.request && msg.request.search) {
-            throw new Error('todo: search request');
-        }
-        else if (msg.response && has(self._response, msg.response.id)
-        && msg.response.node) {
-            self._response[msg.response.id].write({
-                address: msg.response.address
-            });
-        }
-        else if (msg.response && has(self._response, msg.response.id)
-        && msg.response.search) {
-            throw new Error('todo: search response');
-        }
-        else if (msg.response && has(self._response, msg.response.id)
-        && msg.response.close) {
-            self._response[msg.response.id].end();
-        }
-        else if (msg.response) {
-            self._debug('response %d not open', msg.response.id);
-            destroy();
-        }
-        next();
+    var peer = new Peer(self.db);
+    if (addr) peer.address = addr;
+    if (addr) {
+        var hello = false;
+        peer.once('hello-request', function () {
+            if (hello) return;
+            hello = true;
+            self._logConnection(addr, { ok: true });
+        });
+        peer.once('hello-reply', function () {
+            if (hello) return;
+            hello = true;
+            self._logConnection(addr, { ok: true });
+        });
     }
-    
-    function end () {}
-    function destroy () {
-        closed = true;
-        if (dup.destroy) dup.destroy();
-    }
+    self.emit('peer', peer);
+    return peer;
 };

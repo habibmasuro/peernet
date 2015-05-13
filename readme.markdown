@@ -28,3 +28,6 @@ another peernet.
 
 * Build a [2-layer gossip network](https://github.com/ssbc/scuttlebot/issues/172#issuecomment-100410637)
 for webrtc peer introductions.
+* Detect networking scenarios and log accordingly for local network, offline
+situations
+

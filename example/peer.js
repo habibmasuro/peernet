@@ -17,21 +17,25 @@ var pn = peernet(db, {
     transport: require('../lib/transport.js')
 });
 
-pn.on('connect', function (addr, c) {
+pn.on('peer', function (peer) {
+    console.log('connected', peer.address);
     var iv = setInterval(function () {
-        pn.getNodes(addr, 10).on('node', function (node) {
+        peer.getNodes(10).on('data', function (node) {
             console.log('got node:', node);
         });
     }, 1 * 1000);
-    c.once('disconnect', function () { clearInterval(iv) });
+    peer.once('disconnect', function () {
+        console.log('disconnected', peer.address);
+        clearInterval(iv);
+    });
 });
 
 var server = http.createServer(function (req, res) { res.end('...\n') });
 server.listen(argv.port, function () {
     console.log('listening on ' + server.address().port);
-    pn.advertise('ws://0.0.0.0:' + server.address().port);
 });
 
 wsock.createServer({ server: server }, function (stream) {
-    stream.pipe(pn.createStream()).pipe(stream);
+    var addr = stream.socket.upgradeReq.socket.remoteAddress;
+    stream.pipe(pn.createStream(addr)).pipe(stream);
 });
