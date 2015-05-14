@@ -28,7 +28,9 @@ message CloseResponse {}
 message HelloRequest {
     optional bytes address = 1;
 }
-message HelloResponse {}
+message HelloResponse {
+    optional bytes address = 1;
+}
 
 message Message {
   oneof msg {

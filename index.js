@@ -8,6 +8,8 @@ var sprintf = require('sprintf');
 var has = require('has');
 var concatMap = require('concat-map');
 var readonly = require('read-only-stream');
+var defined = require('defined');
+var decoder = require('./lib/decoder.js');
 
 var crypto = require('crypto');
 function sha (buf) {
@@ -30,7 +32,44 @@ function Peernet (db, opts) {
     this._transport = opts.transport;
     this._connections = {};
     if (!opts.debug) this._debug = function () {};
+    
+    var ivms = defined(opts.interval, 5000);
+    var ivsize = defined(opts.size, 10);
+    if (ivms) this._getNodesLoop(ivms, ivsize);
 }
+
+Peernet.prototype._getNodesLoop = function (ms, size) {
+    var self = this;
+    self.on('peer', function (peer) {
+        var disconnected = false;
+        var timeout = null;
+        var nodes = [];
+        
+        peer.once('disconnect', function () {
+            disconnected = true;
+            clearTimeout(timeout);
+        });
+        getNodes();
+        
+        function getNodes () {
+            if (disconnected) return;
+            self._debug('get nodes: %s', peer.address);
+            peer.getNodes(size).pipe(through.obj(write, end));
+        }
+        function write (node, enc, next) {
+            self._debug('node from %s: %s', peer.address, node.address);
+            nodes.push(node);
+            next();
+        }
+        function end (next) {
+            self.save(nodes, function (err) {
+                if (err) self.emit('error', err);
+                setTimeout(getNodes, ms);
+            });
+            next();
+        }
+    });
+};
 
 Peernet.prototype._debug = function () {
     console.error(sprintf.apply(null, arguments));
@@ -55,6 +94,7 @@ Peernet.prototype.connect = function (addr) {
     c.once('end', onend);
     
     c.once('connect', function () {
+        self._debug('connected: %s', addr);
         self.emit('connect', peer);
         peer.emit('connect');
     });
@@ -67,6 +107,7 @@ Peernet.prototype.connect = function (addr) {
             self._logConnection(addr, { ok: false });
         }
         if (c.destroy) c.destroy();
+        self._debug('disconnected: %s', addr);
         self.emit('disconnect', peer);
         peer.emit('disconnect');
     }
@@ -79,10 +120,10 @@ Peernet.prototype.save = function (nodes, cb) {
             {
                 type: 'put',
                 key: 'addr!' + key,
-                value: node
+                value: decoder.NodeResponse.encode(node)
             }
         ];
-    }), { valueEncoding: 'json' }, cb);
+    }), cb);
 };
 
 Peernet.prototype._logStats = function (addr, stats, cb) {
