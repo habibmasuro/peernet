@@ -31,3 +31,8 @@ for webrtc peer introductions.
 * Detect networking scenarios and log accordingly for local network, offline
 situations
 
+# todo
+
+* addr keys to prevent data forgery once a peer is known
+* point at hash of previous value in the addr tables
+* save address origin to round-robin between addresses (sybil flood protection)

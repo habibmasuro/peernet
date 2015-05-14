@@ -1,10 +1,14 @@
 message NodeRequest {
   optional uint32 limit = 1;
   optional bool follow = 2 [default = false];
+  optional bytes previous = 3;
 }
 
 message NodeResponse {
   required bytes address = 1;
+  repeated bytes subnets = 2;
+  optional bytes previous = 3;
+  optional bytes key = 4;
 }
 
 message SearchRequest {

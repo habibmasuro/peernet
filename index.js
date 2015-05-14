@@ -9,7 +9,10 @@ var has = require('has');
 var concatMap = require('concat-map');
 var readonly = require('read-only-stream');
 
-function sha (buf) { return crypto.createHash('sha512').update(buf).digest() }
+var crypto = require('crypto');
+function sha (buf) {
+    return crypto.createHash('sha512').update(buf).digest();
+}
 
 var memdown = require('memdown');
 var levelup = require('levelup');
@@ -26,12 +29,7 @@ function Peernet (db, opts) {
     this._options = opts;
     this._transport = opts.transport;
     this._connections = {};
-    
     if (!opts.debug) this._debug = function () {};
-    
-    var bootstrap = opts.bootstrap || [];
-    if (!isarray(bootstrap)) bootstrap = [ bootstrap ];
-    bootstrap.forEach(function (b) { self.connect(b) });
 }
 
 Peernet.prototype._debug = function () {
@@ -74,21 +72,21 @@ Peernet.prototype.connect = function (addr) {
     }
 };
 
-Peernet.prototype._saveNodes = function (nodes, cb) {
-    this.db.batch(concatMap(nodes, function (addr) {
-        var key = sha(addr);
+Peernet.prototype.save = function (nodes, cb) {
+    this.db.batch(concatMap(nodes, function (node) {
+        var key = sha(node.address).toString('hex');
         return [
             {
                 type: 'put',
                 key: 'addr!' + key,
-                value: node.address
+                value: JSON.stringify(node)
             }
-        ]
+        ];
     }), cb);
 };
 
 Peernet.prototype._logStats = function (addr, stats, cb) {
-    var key = sha(addr);
+    var key = sha(addr).toString('hex');
     this.db.batch([
         {
             type: 'put',
@@ -99,7 +97,7 @@ Peernet.prototype._logStats = function (addr, stats, cb) {
 };
 
 Peernet.prototype._logConnection = function (addr, stats, cb) {
-    var key = sha(addr);
+    var key = sha(addr).toString('hex');
     this.db.batch([
         {
             type: 'put',
@@ -114,7 +112,7 @@ Peernet.prototype._purge = function () {
 };
 
 Peernet.prototype.getStats = function (addr, cb) {
-    var key = sha(addr);
+    var key = sha(addr).toString('hex');
     var pending = 2;
     cb = once(cb || function () {});
     

@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "description": "peer to peer gossip network using randomized algorithms",
   "main": "index.js",
+  "bin": {
+    "peernet": "bin/cmd.js"
+  },
   "directories": {
     "example": "example",
     "test": "test"
