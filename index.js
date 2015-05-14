@@ -79,10 +79,10 @@ Peernet.prototype.save = function (nodes, cb) {
             {
                 type: 'put',
                 key: 'addr!' + key,
-                value: JSON.stringify(node)
+                value: node
             }
         ];
-    }), cb);
+    }), { valueEncoding: 'json' }, cb);
 };
 
 Peernet.prototype._logStats = function (addr, stats, cb) {
