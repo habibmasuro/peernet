@@ -1,0 +1,32 @@
+peernet server
+
+  Start the server in the foreground.
+ 
+peernet daemon
+
+  Start the server in the background.
+
+peernet log
+
+  Print detailed lifecycle events as they arrive.
+
+peernet join SUBNET
+
+  Advertise membership in SUBNET.
+
+peernet part SUBNET
+
+  Cancel membership in SUBNET.
+
+peernet search SUBNET
+
+  Search for nodes that belong to SUBNET.
+
+peernet ls
+
+  Show all known nodes.
+
+peernet ls SUBNET
+
+  Show all known nodes in SUBNET.
+
