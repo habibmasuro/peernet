@@ -110,6 +110,7 @@ Peernet.prototype.connect = function (addr, cb) {
         if (!hello) {
             self._logConnection(addr, { ok: false });
         }
+        delete self._connections[addr];
         if (c.destroy) c.destroy();
         self._debug('disconnected: %s', addr);
         self.emit('disconnect', peer);
