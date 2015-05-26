@@ -1,26 +1,42 @@
 #!/usr/bin/env node
 
+var minimist = require('minimist');
+var argv = minimist(process.argv.slice(2), {
+    alias: {
+    },
+    default: {
+    }
+});
+
+if (argv._[0] === 'server') {
+}
+else if (argv._[0] === 'daemon') {
+}
+else if (argv._[0] === 'log') {
+}
+else if (argv._[0] === 'join') {
+}
+else if (argv._[0] === 'part') {
+}
+else if (argv._[0] === 'search') {
+}
+else if (argv._[0] === 'ls') {
+}
+else if (argv._[0] === 'connections') {
+}
+else if (argv._[0] === 'connect') {
+}
+else if (argv._[0] === 'disconnect') {
+}
+
+/*
 var http = require('http');
 var wrtc = require('wrtc');
 var wsock = require('websocket-stream');
-var minimist = require('minimist');
 var isarray = require('isarray');
 var concatMap = require('concat-map');
 var through = require('through2');
 
-var argv = minimist(process.argv.slice(2), {
-    alias: {
-        a: [ 'addr', 'address' ],
-        b: 'bootstrap',
-        c: 'connect',
-        d: 'datadir',
-        n: 'nodes',
-        p: 'port',
-        s: [ 'subnet', 'subnets' ],
-        v: 'verbose'
-    },
-    default: { port: 0, nodes: 5 }
-});
 var peernet = require('../');
 
 if (argv._[0] === 'daemon') {
@@ -77,3 +93,4 @@ function getPeernet () {
     pn.save(saveAddrs.concat(saveCons));
     return pn;
 }
+*/

@@ -30,3 +30,15 @@ peernet ls SUBNET
 
   Show all known nodes in SUBNET.
 
+peernet connections
+
+  Show the active connections.
+
+peernet connect ADDR
+
+  Connect to ADDR.
+
+peernet disconnect ADDR.
+
+  Disconnect from ADDR.
+
