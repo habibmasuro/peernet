@@ -3,14 +3,20 @@
 var path = require('path');
 var defined = require('defined');
 var HOME = defined(process.env.HOME, process.env.USERDIR);
+var DIR = defined(
+    process.env.PEERNET_PATH,
+    path.join(HOME, '.config/peernet')
+);
 
 var minimist = require('minimist');
 var argv = minimist(process.argv.slice(2), {
     alias: {
-        p: 'port'
+        p: 'port',
+        d: 'datadir'
     },
     default: {
-        sockfile: path.join(HOME, '.config/peernet/sock')
+        sockfile: path.join(DIR, 'sock'),
+        datadir: path.join(DIR, 'db')
     }
 });
 var autod = require('auto-daemon');
@@ -37,9 +43,23 @@ else if (argv._[0] === 'rm') {
 }
 else if (argv._[0] === 'connections') {
     auto(function (r, c) {
-        r.connections(argv._[1], function (err) {
-            if (err) error(err)
-            else c.destroy()
+        r.connections(function (err, cons) {
+            if (err) return error(err);
+            cons.forEach(function (con) {
+                console.log(con);
+            });
+            c.destroy()
+        });
+    });
+}
+else if (argv._[0] === 'servers') {
+    auto(function (r, c) {
+        r.servers(function (err, servers) {
+            if (err) return error(err);
+            servers.forEach(function (s) {
+                console.log(s.address + ':' + s.port);
+            });
+            c.destroy()
         });
     });
 }
@@ -68,7 +88,14 @@ else if (argv._[0] === 'listen') {
         r.listen(opts, function (err, service) {
             if (err) return error(err);
             console.log(service.address + ':' + service.port);
+            c.destroy();
         });
+    });
+}
+else if (argv._[0] === 'close') {
+    auto(function (r, c) {
+        r.close(function () { c.destroy() });
+        c.on('error', function () {});
     });
 }
 
@@ -76,83 +103,25 @@ function auto (cb) {
     var opts = {
         rpcfile: path.join(__dirname, '../lib/rpc.js'),
         sockfile: argv.sockfile,
-        methods: rpc.methods
+        methods: rpc.methods,
+        debug: argv.debug,
+        args: [ '-d', argv.datadir ]
     };
-    mkdirp(path.dirname(opts.sockfile), function (err) {
+    var pending = 2;
+    mkdirp(path.dirname(opts.sockfile),ready);
+    mkdirp(argv.datadir, ready);
+    
+    function ready (err) {
+        if (-- pending !== 0) return;
         autod(opts, function (err, r, c) {
             if (err) return error(err);
             else cb(r, c)
+            c.on('error', function () {});
         });
-    });
+    }
 }
 
 function error (msg) {
     console.error(msg + '');
     process.exit(1);
 }
-
-/*
-var http = require('http');
-var wrtc = require('wrtc');
-var wsock = require('websocket-stream');
-var isarray = require('isarray');
-var concatMap = require('concat-map');
-var through = require('through2');
-
-var peernet = require('../');
-
-if (argv._[0] === 'daemon') {
-}
-
-var subnets = argv.subnet || [];
-if (!isarray(subnets)) subnets = [ subnets ];
-subnets = concatMap(subnets, function (s) { return s.split(',') });
-
-var pn = getPeernet();
-if (argv.port) wsockServer(pn);
-
-function wsockServer (pn) {
-    var server = http.createServer(function (req, res) { res.end('...\n') });
-    server.listen(argv.port, function () {
-        console.log('listening on ' + server.address().port);
-    });
-    wsock.createServer({ server: server }, function (stream) {
-        var addr = stream.socket.upgradeReq.socket.remoteAddress;
-        stream.pipe(pn.createStream(addr)).pipe(stream);
-    });
-}
-
-function getPeernet () {
-    var level = require('level');
-    var db = level(argv.datadir);
-    var pn = peernet(db, {
-        bootstrap: argv.bootstrap,
-        debug: argv.debug,
-        nodes: argv.nodes,
-        transport: require('../lib/transport.js')
-    });
-    
-    var cons = argv.connect || [];
-    if (!isarray(cons)) cons = [ cons ];
-    cons.forEach(function (c) { pn.connect(c) });
-    
-    var saveCons = cons.map(function (c) {
-        return {
-            address: c,
-            subnets: subnets
-        };
-    });
-    
-    var addrs = argv.address || [];
-    if (!isarray(addrs)) addrs = [ addrs ];
-    
-    var saveAddrs = addrs.map(function (a) {
-        return {
-            address: a,
-            subnets: subnets
-        };
-    });
-    pn.save(saveAddrs.concat(saveCons));
-    return pn;
-}
-*/
