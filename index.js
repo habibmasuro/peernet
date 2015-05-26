@@ -75,7 +75,8 @@ Peernet.prototype._debug = function () {
     console.error(sprintf.apply(null, arguments));
 };
 
-Peernet.prototype.connect = function (addr) {
+Peernet.prototype.connect = function (addr, cb) {
+    cb = once(cb || function () {});
     var self = this;
     var c = this._transport(addr);
     var closed = false;
@@ -92,11 +93,13 @@ Peernet.prototype.connect = function (addr) {
     c.pipe(peer).pipe(c);
     c.once('error', onend);
     c.once('end', onend);
+    c.once('error', cb);
     
     c.once('connect', function () {
         self._debug('connected: %s', addr);
         self.emit('connect', peer);
         peer.emit('connect');
+        cb(null, cb);
     });
     return peer;
     
@@ -110,6 +113,12 @@ Peernet.prototype.connect = function (addr) {
         self._debug('disconnected: %s', addr);
         self.emit('disconnect', peer);
         peer.emit('disconnect');
+    }
+};
+
+Peernet.prototype.disconnect = function (addr) {
+    if (has(this._connections, addr)) {
+        this._connections[addr].destroy();
     }
 };
 
