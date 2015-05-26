@@ -7,24 +7,17 @@ var HOME = defined(process.env.HOME, process.env.USERDIR);
 var minimist = require('minimist');
 var argv = minimist(process.argv.slice(2), {
     alias: {
+        p: 'port'
     },
     default: {
         sockfile: path.join(HOME, '.config/peernet/sock')
     }
 });
 var autod = require('auto-daemon');
-var mkdirp = require('mkdir');
-var rpc = require('./lib/rpc.js');
+var mkdirp = require('mkdirp');
+var rpc = require('../lib/rpc.js');
 
-if (argv._[0] === 'server') {
-}
-else if (argv._[0] === 'daemon') {
-}
-else if (argv._[0] === 'log') {
-}
-else if (argv._[0] === 'join') {
-}
-else if (argv._[0] === 'part') {
+if (argv._[0] === 'log') {
 }
 else if (argv._[0] === 'add') {
     auto(function (r, c) {
@@ -42,20 +35,46 @@ else if (argv._[0] === 'rm') {
         });
     });
 }
-else if (argv._[0] === 'search') {
-}
-else if (argv._[0] === 'ls') {
-}
 else if (argv._[0] === 'connections') {
+    auto(function (r, c) {
+        r.connections(argv._[1], function (err) {
+            if (err) error(err)
+            else c.destroy()
+        });
+    });
 }
 else if (argv._[0] === 'connect') {
+    auto(function (r, c) {
+        r.connect(argv._[1], function (err) {
+            if (err) error(err)
+            else c.destroy()
+        });
+    });
 }
 else if (argv._[0] === 'disconnect') {
+    auto(function (r, c) {
+        r.disconnect(argv._[1], function (err) {
+            if (err) error(err)
+            else c.destroy()
+        });
+    });
+}
+else if (argv._[0] === 'listen') {
+    auto(function (r, c) {
+        var opts = {
+            proto: argv._[1] || 'ws',
+            port: argv.port
+        };
+        r.listen(opts, function (err, service) {
+            if (err) return error(err);
+            console.log(service.address + ':' + service.port);
+        });
+    });
 }
 
 function auto (cb) {
     var opts = {
-        rpcfile: path.join(__dirname, 'lib/rpc.js'),
+        rpcfile: path.join(__dirname, '../lib/rpc.js'),
         sockfile: argv.sockfile,
         methods: rpc.methods
     };

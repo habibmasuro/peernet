@@ -120,7 +120,12 @@ Peernet.prototype.connect = function (addr, cb) {
 Peernet.prototype.disconnect = function (addr) {
     if (has(this._connections, addr)) {
         this._connections[addr].destroy();
+        delete this._connections[addr];
     }
+};
+
+Peernet.prototype.connections = function () {
+    return Object.keys(this._connections);
 };
 
 Peernet.prototype.save = function (nodes, cb) {
