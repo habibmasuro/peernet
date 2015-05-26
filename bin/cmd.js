@@ -1,12 +1,20 @@
 #!/usr/bin/env node
 
+var path = require('path');
+var defined = require('defined');
+var HOME = defined(process.env.HOME, process.env.USERDIR);
+
 var minimist = require('minimist');
 var argv = minimist(process.argv.slice(2), {
     alias: {
     },
     default: {
+        sockfile: path.join(HOME, '.config/peernet/sock')
     }
 });
+var autod = require('auto-daemon');
+var mkdirp = require('mkdir');
+var rpc = require('./lib/rpc.js');
 
 if (argv._[0] === 'server') {
 }
@@ -18,6 +26,22 @@ else if (argv._[0] === 'join') {
 }
 else if (argv._[0] === 'part') {
 }
+else if (argv._[0] === 'add') {
+    auto(function (r, c) {
+        r.add(argv._.slice(1), function (err) {
+            if (err) error(err)
+            else c.destroy()
+        });
+    });
+}
+else if (argv._[0] === 'rm') {
+    auto(function (r, c) {
+        r.remove(argv._.slice(1), function (err) {
+            if (err) error(err)
+            else c.destroy()
+        });
+    });
+}
 else if (argv._[0] === 'search') {
 }
 else if (argv._[0] === 'ls') {
@@ -27,6 +51,25 @@ else if (argv._[0] === 'connections') {
 else if (argv._[0] === 'connect') {
 }
 else if (argv._[0] === 'disconnect') {
+}
+
+function auto (cb) {
+    var opts = {
+        rpcfile: path.join(__dirname, 'lib/rpc.js'),
+        sockfile: argv.sockfile,
+        methods: rpc.methods
+    };
+    mkdirp(path.dirname(opts.sockfile), function (err) {
+        autod(opts, function (err, r, c) {
+            if (err) return error(err);
+            else cb(r, c)
+        });
+    });
+}
+
+function error (msg) {
+    console.error(msg + '');
+    process.exit(1);
 }
 
 /*

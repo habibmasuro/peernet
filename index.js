@@ -9,6 +9,7 @@ var has = require('has');
 var concatMap = require('concat-map');
 var readonly = require('read-only-stream');
 var defined = require('defined');
+var once = require('once');
 var decoder = require('./lib/decoder.js');
 
 var crypto = require('crypto');
@@ -133,6 +134,47 @@ Peernet.prototype.save = function (nodes, cb) {
             }
         ];
     }), cb);
+};
+
+Peernet.prototype.remove = function (nodes, cb) {
+    cb = once(cb || function () {});
+    var keys = [];
+    var db = this.db;
+    var pending = 1;
+    
+    nodes.forEach(function (node) {
+        var key = sha(node.address).toString('hex');
+        keys.push('addr!' + key);
+        pending += 2;
+        
+        var x = db.createReadStream({
+            gt: 'stats!' + key + '!',
+            lt: 'stats!' + key + '!~'
+        });
+        x.on('error', cb);
+        x.pipe(through(function (row, enc, next) {
+            keys.push(row.key);
+            next();
+        }, done));
+        
+        var y = db.createReadStream({
+            gt: 'con!' + key + '!',
+            lt: 'con!' + key + '!~'
+        });
+        y.on('error', cb);
+        y.pipe(through(function (row, enc, next) {
+            keys.push(row.key);
+            next();
+        }, done));
+    });
+    done();
+    
+    function done () {
+        if (-- pending !== 0) return;
+        db.batch(keys.map(function (key) {
+            return { type: 'del', key: key };
+        }), cb);
+    }
 };
 
 Peernet.prototype._logStats = function (addr, stats, cb) {
