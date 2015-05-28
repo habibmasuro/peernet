@@ -145,7 +145,9 @@ function listen () {
     };
     mkdirp(path.dirname(argv.sockfile), function () {
         var server = createServer(rpc, opts);
-        server.listen(argv.sockfile);
+        server.listen(argv.sockfile, function () {
+            auto(function (r, c) { c.destroy() });
+        });
     });
 }
 

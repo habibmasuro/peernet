@@ -17,6 +17,7 @@ function sha (buf) {
 }
 
 var Peer = require('./lib/peer.js');
+var randomPeer = require('./lib/random.js');
 
 module.exports = Peernet;
 inherits(Peernet, EventEmitter);
@@ -35,9 +36,27 @@ function Peernet (db, opts) {
     
     if (opts.bootstrap !== false) {
         var n = defined(opts.connections, 5);
-        
+        this.bootstrap(n);
     }
-}
+};
+
+Peernet.prototype.bootstrap = function (n) {
+    var self = this;
+    
+    var peers = 0;
+    randomPeer(self.db, n).pipe(through.obj(write, end));
+    
+    function write (node, enc, next) {
+console.log('node=', node); 
+        peers ++;
+        next();
+    }
+    function end (next) {
+        if (peers < n) {
+            
+        }
+    }
+};
 
 Peernet.prototype._getNodesLoop = function (ms, size) {
     var self = this;
