@@ -9,6 +9,7 @@ var readonly = require('read-only-stream');
 var defined = require('defined');
 var once = require('once');
 var decoder = require('./lib/decoder.js');
+var lenpre = require('length-prefixed-stream');
 
 var crypto = require('crypto');
 function sha (buf) {
@@ -42,6 +43,7 @@ function Peernet (db, opts) {
 Peernet.prototype._getNodesLoop = function (ms, size) {
     var self = this;
     self.on('peer', function (peer) {
+console.log('PEER', peer); 
         var disconnected = false;
         var timeout = null;
         var nodes = [];
@@ -119,15 +121,35 @@ Peernet.prototype.connect = function (addr, cb) {
 };
 
 Peernet.prototype.known = function (opts) {
+    if (!opts) opts = {};
     var r = this.db.createReadStream({
         gt: 'addr!' + defined(opts.gt, ''),
         lt: 'addr!' + defined(opts.lt, '~'),
-        limit: opts.limit
+        limit: opts.limit,
+        valueEncoding: 'binary'
     });
-    return r.pipe(through.obj(function (row, enc, next) {
-        this.push(JSON.stringify(row) + '\n');
-        next();
-    }));
+    r.on('error', function (err) {
+        console.log('wtferr', err);
+    });
+    
+    if (opts.raw) {
+        return readonly(r.pipe(through.obj(function (row, enc, next) {
+            this.push(row.value);
+            next();
+        })).pipe(lenpre.encode()));
+    }
+    else {
+        return readonly(r.pipe(through.obj(function (row, enc, next) {
+            var ref = decoder.NodeResponse.decode(row.value)
+            this.push(JSON.stringify({
+                address: ref.address.toString('base64'),
+                subnets: ref.subnets,
+                previous: ref.previous,
+                key: ref.key
+            }) + '\n');
+            next();
+        })));
+    }
 };
 
 Peernet.prototype.disconnect = function (addr) {
@@ -152,7 +174,7 @@ Peernet.prototype.save = function (nodes, cb) {
                 value: decoder.NodeResponse.encode(node)
             }
         ];
-    }), cb);
+    }), { valueEncoding: 'binary' }, cb);
     
     nodes.forEach(function (node) {
         self.emit('known', node);

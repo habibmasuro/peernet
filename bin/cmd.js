@@ -3,6 +3,9 @@
 var path = require('path');
 var fs = require('fs');
 var defined = require('defined');
+var through = require('through2');
+var split = require('split2');
+
 var HOME = defined(process.env.HOME, process.env.USERDIR);
 var DIR = defined(
     process.env.PEERNET_PATH,
@@ -45,9 +48,15 @@ else if (argv._[0] === 'rm') {
 }
 else if (argv._[0] === 'known') {
     auto(function (r, c) {
-        var s = r.known(argv);
-        s.pipe(process.stdout);
-        s.once('end', function () { c.destroy() });
+        r.known().pipe(split(JSON.parse)).pipe(through.obj(write, end));
+        
+        function write (row, enc, next) {
+            var addr = Buffer(row.address, 'base64').toString();
+            console.log(addr, row.subnets.join(','));
+            next();
+        }
+        
+        function end () { c.destroy() }
     });
 }
 else if (argv._[0] === 'connections') {
@@ -73,10 +82,16 @@ else if (argv._[0] === 'servers') {
     });
 }
 else if (argv._[0] === 'connect') {
+    var addr = argv._[1];
+    var nodes = [ { address: addr } ];
+    
     auto(function (r, c) {
-        r.connect(argv._[1], function (err) {
-            if (err) error(err)
-            else c.destroy()
+        r.connect(addr, function (err) {
+            if (err) return error(err);
+            r.add(nodes, function (err) {
+                if (err) error(err)
+                else c.destroy()
+            });
         });
     });
 }
@@ -119,7 +134,7 @@ else if (argv._[0] === 'close') {
 
 function listen () {
     var opts = {
-        _: [ '-d', argv.datadir ],
+        _: [ __filename, '-d', argv.datadir ],
         autoclose: false
     };
     mkdirp(path.dirname(argv.sockfile), function () {
