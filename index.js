@@ -1,15 +1,22 @@
 var inherits = require('inherits');
-var EventEmitter = require('events').EventEmitter;
-var through = require('through2');
-var isarray = require('isarray');
-var sprintf = require('sprintf');
 var has = require('has');
-var concatMap = require('concat-map');
-var readonly = require('read-only-stream');
 var defined = require('defined');
+var isarray = require('isarray');
 var once = require('once');
-var decoder = require('./lib/decoder.js');
+
+var sprintf = require('sprintf');
+var concatMap = require('concat-map');
+
+var through = require('through2');
+var readonly = require('read-only-stream');
 var lenpre = require('length-prefixed-stream');
+
+var decoder = require('./lib/decoder.js');
+
+var dns = require('dns');
+var url = require('url');
+var os = require('os');
+var EventEmitter = require('events').EventEmitter;
 
 var crypto = require('crypto');
 function sha (buf) {
@@ -56,14 +63,33 @@ Peernet.prototype.bootstrap = function (n) {
     
     function write (node, enc, next) {
         var addr = node.address.toString();
-        if (self.connections().indexOf(addr) < 0) {
-            pending ++;
-            self.connect(addr, function (err) {
-                pending --;
-            });
-        }
+        self._islocal(addr, function (err, local) {
+console.log('ISLOCAL:' + addr, err, local); 
+            if (err || local) return;
+            if (self.connections().indexOf(addr) < 0) {
+                pending ++;
+                self.connect(addr, function (err) {
+                    pending --;
+                });
+            }
+        });
         next();
     }
+};
+
+Peernet.prototype._islocal = function (addr, cb) {
+    var rpc = require('./lib/rpc.js');
+    var u = url.parse(addr);
+    for (var i = 0; i < rpc.servers.length; i++) {
+        var a = rpc.servers[i].address();
+        if (a.port === u.port) {
+            return dns.reverse(u.hostname, function (err, r) {
+                if (r === os.hostname()) cb(null, true)
+                else cb(null, false)
+            });
+        }
+    }
+    process.nextTick(function () { cb(null, false) });
 };
 
 Peernet.prototype._getNodesLoop = function (ms, size) {
