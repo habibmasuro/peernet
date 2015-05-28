@@ -28,7 +28,6 @@ function Peernet (db, opts) {
     this._options = opts;
     this._transport = opts.transport;
     this._connections = {};
-    if (!opts.debug) this._debug = function () {};
     
     var ivms = defined(opts.interval, 5000);
     var ivsize = defined(opts.size, 10);
@@ -74,7 +73,11 @@ Peernet.prototype._getNodesLoop = function (ms, size) {
 };
 
 Peernet.prototype._debug = function () {
-    console.error(sprintf.apply(null, arguments));
+    var msg = sprintf.apply(null, arguments);
+    if (this._options.debug) {
+        console.error(msg);
+    }
+    this.emit('debug', msg);
 };
 
 Peernet.prototype.connect = function (addr, cb) {

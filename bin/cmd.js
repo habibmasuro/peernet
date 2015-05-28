@@ -27,8 +27,14 @@ var autod = require('auto-daemon');
 var createServer = require('auto-daemon/server');
 var mkdirp = require('mkdirp');
 var rpc = require('../lib/rpc.js');
+var onend = require('end-of-stream');
 
 if (argv._[0] === 'log') {
+    auto(function (r, c) {
+        var log = r.log();
+        log.pipe(process.stdout);
+        onend(log, function () { c.destroy() });
+    });
 }
 else if (argv._[0] === 'add') {
     auto(function (r, c) {
