@@ -16,7 +16,8 @@ var minimist = require('minimist');
 var argv = minimist(process.argv.slice(2), {
     alias: {
         p: 'port',
-        d: 'datadir'
+        d: 'datadir',
+        h: 'help'
     },
     default: {
         sockfile: path.join(DIR, 'sock'),
@@ -29,7 +30,12 @@ var mkdirp = require('mkdirp');
 var rpc = require('../lib/rpc.js');
 var onend = require('end-of-stream');
 
-if (argv._[0] === 'log') {
+if (argv._[0] === 'help' || argv.help) {
+    fs.createReadStream(path.join(__dirname, 'usage.txt'))
+        .pipe(process.stdout)
+    ;
+}
+else if (argv._[0] === 'log') {
     auto(function (r, c) {
         var log = r.log();
         log.pipe(process.stdout);

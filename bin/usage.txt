@@ -10,29 +10,25 @@ peernet log
 
   Print detailed lifecycle events as they arrive.
 
-peernet join SUBNET
-
-  Advertise membership in SUBNET.
-
-peernet part SUBNET
-
-  Cancel membership in SUBNET.
-
-peernet search SUBNET
-
-  Search for nodes that belong to SUBNET.
-
-peernet ls
+peernet known
 
   Show all known nodes.
 
-peernet ls SUBNET
+peernet own
 
-  Show all known nodes in SUBNET.
+  Show the addresses of own services.
 
 peernet connections
 
   Show the active connections.
+
+peernet add ADDR
+
+  Add ADDR to the address tables without connecting.
+
+peernet rm ADDR
+
+  Remove ADDR from the address tables.
 
 peernet connect ADDR
 
@@ -41,4 +37,12 @@ peernet connect ADDR
 peernet disconnect ADDR.
 
   Disconnect from ADDR.
+
+peernet listen PROTOCOL
+
+  Create a service for PROTOCOL, optionally on a `--port`.
+
+peernet servers
+
+  Show all local services.
 
