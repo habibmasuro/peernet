@@ -43,7 +43,6 @@ function Peernet (db, opts) {
 Peernet.prototype._getNodesLoop = function (ms, size) {
     var self = this;
     self.on('peer', function (peer) {
-console.log('PEER', peer); 
         var disconnected = false;
         var timeout = null;
         var nodes = [];
@@ -128,18 +127,16 @@ Peernet.prototype.known = function (opts) {
         limit: opts.limit,
         valueEncoding: 'binary'
     });
-    r.on('error', function (err) {
-        console.log('wtferr', err);
-    });
-    
     if (opts.raw) {
-        return readonly(r.pipe(through.obj(function (row, enc, next) {
+        var out = readonly(r.pipe(through.obj(function (row, enc, next) {
             this.push(row.value);
             next();
         })).pipe(lenpre.encode()));
+        r.on('error', function (err) { out.emit('error', err) });
+        return out;
     }
     else {
-        return readonly(r.pipe(through.obj(function (row, enc, next) {
+        var out = readonly(r.pipe(through.obj(function (row, enc, next) {
             var ref = decoder.NodeResponse.decode(row.value)
             this.push(JSON.stringify({
                 address: ref.address.toString('base64'),
@@ -149,6 +146,8 @@ Peernet.prototype.known = function (opts) {
             }) + '\n');
             next();
         })));
+        r.on('error', function (err) { out.emit('error', err) });
+        return out;
     }
 };
 
