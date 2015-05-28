@@ -42,19 +42,23 @@ function Peernet (db, opts) {
 
 Peernet.prototype.bootstrap = function (n) {
     var self = this;
+    var pending = 0;
     
-    var peers = 0;
-    randomPeer(self.db, n).pipe(through.obj(write, end));
+    setInterval(function () {
+        var needed = n - pending - self.connections().length;
+        if (needed === 0) return;
+        randomPeer(self.db, needed).pipe(through.obj(write));
+    }, 5000);
     
     function write (node, enc, next) {
-console.log('node=', node); 
-        peers ++;
-        next();
-    }
-    function end (next) {
-        if (peers < n) {
-            
+        var addr = node.address.toString();
+        if (self.connections().indexOf(addr) < 0) {
+            pending ++;
+            self.connect(addr, function (err) {
+                pending --;
+            });
         }
+        next();
     }
 };
 
