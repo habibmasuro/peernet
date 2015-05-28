@@ -17,7 +17,7 @@ function sha (buf) {
 }
 
 var Peer = require('./lib/peer.js');
-var randomPeer = require('./lib/random.js');
+var randomPeers = require('./lib/random.js');
 
 module.exports = Peernet;
 inherits(Peernet, EventEmitter);
@@ -47,7 +47,11 @@ Peernet.prototype.bootstrap = function (n) {
     setInterval(function () {
         var needed = n - pending - self.connections().length;
         if (needed === 0) return;
-        randomPeer(self.db, needed).pipe(through.obj(write));
+        randomPeers(self.db, needed).pipe(through.obj(write));
+    }, 5000);
+    
+    setInterval(function () {
+        self._purge(10);
     }, 5000);
     
     function write (node, enc, next) {
@@ -207,6 +211,7 @@ Peernet.prototype.save = function (nodes, cb) {
 };
 
 Peernet.prototype.remove = function (nodes, cb) {
+    var self = this;
     cb = once(cb || function () {});
     var keys = [];
     var db = this.db;
@@ -222,7 +227,7 @@ Peernet.prototype.remove = function (nodes, cb) {
             lt: 'stats!' + key + '!~'
         });
         x.on('error', cb);
-        x.pipe(through(function (row, enc, next) {
+        x.pipe(through.obj(function (row, enc, next) {
             keys.push(row.key);
             next();
         }, done));
@@ -232,7 +237,7 @@ Peernet.prototype.remove = function (nodes, cb) {
             lt: 'con!' + key + '!~'
         });
         y.on('error', cb);
-        y.pipe(through(function (row, enc, next) {
+        y.pipe(through.obj(function (row, enc, next) {
             keys.push(row.key);
             next();
         }, done));
@@ -243,7 +248,11 @@ Peernet.prototype.remove = function (nodes, cb) {
         if (-- pending !== 0) return;
         db.batch(keys.map(function (key) {
             return { type: 'del', key: key };
-        }), cb);
+        }), function (err) {
+            if (err) return cb(err);
+            self._debug('removed %d nodes', keys.length);
+            cb(null);
+        });
     }
 };
 
@@ -269,8 +278,32 @@ Peernet.prototype._logConnection = function (addr, stats, cb) {
     ], cb);
 };
 
-Peernet.prototype._purge = function () {
-    throw new Error('todo: purge');
+Peernet.prototype._purge = function (n, cb) {
+    var self = this;
+    if (n === undefined) n = 50;
+    var remove = [];
+    var pending = 1;
+    randomPeers(self.db, n).pipe(through.obj(write, end));
+    
+    function write (row, enc, next) {
+        var addr = row.address.toString();
+        pending ++;
+        self.getStats(addr, function (err, stats) {
+            if (err) return;
+            var ok = stats.connections.ok;
+            var fail = stats.connections.fail;
+            var ratio = ok / (fail + ok);
+            if (fail + ok > 0 && (ok === 0 || ratio < 0.2)) {
+                remove.push({ address: addr });
+            }
+            if (--pending === 0) done();
+        });
+        next();
+    }
+    function end () { if (-- pending === 0) done() }
+    function done () {
+        if (remove.length) self.remove(remove, cb)
+    }
 };
 
 Peernet.prototype.getStats = function (addr, cb) {
@@ -296,18 +329,18 @@ Peernet.prototype.getStats = function (addr, cb) {
     c.once('error', cb);
     c.pipe(through.obj(cwrite, done));
     
-    function swrite (buf, enc, next) {
-        try { var row = JSON.parse(buf) }
+    function swrite (row, enc, next) {
+        try { var value = JSON.parse(row.value) }
         catch (err) { return this.emit('error', err) }
-        stats.nodes.rx += Number(row.rx) || 0;
-        stats.nodes.tx += Number(row.tx) || 0;
+        stats.nodes.rx += Number(value.rx) || 0;
+        stats.nodes.tx += Number(value.tx) || 0;
         next();
     }
-    function cwrite (buf, enc, next) {
-        try { var row = JSON.parse(buf) }
+    function cwrite (row, enc, next) {
+        try { var value = JSON.parse(row.value) }
         catch (err) { return this.emit('error', err) }
-        stats.connections.ok += row.ok ? 1 : 0;
-        stats.connections.fail += row.ok ? 0 : 1;
+        stats.connections.ok += value.ok ? 1 : 0;
+        stats.connections.fail += value.ok ? 0 : 1;
         next();
     }
     
