@@ -63,32 +63,14 @@ Peernet.prototype.bootstrap = function (n) {
     
     function write (node, enc, next) {
         var addr = node.address.toString();
-        self._islocal(addr, function (err, local) {
-            if (err || local) return;
-            if (self.connections().indexOf(addr) < 0) {
-                pending ++;
-                self.connect(addr, function (err) {
-                    pending --;
-                });
-            }
-        });
-        next();
-    }
-};
-
-Peernet.prototype._islocal = function (addr, cb) {
-    var rpc = require('./lib/rpc.js');
-    var u = url.parse(addr);
-    for (var i = 0; i < rpc.servers.length; i++) {
-        var a = rpc.servers[i].address();
-        if (a.port === u.port) {
-            return dns.reverse(u.hostname, function (err, r) {
-                if (r === os.hostname()) cb(null, true)
-                else cb(null, false)
+        if (self.connections().indexOf(addr) < 0) {
+            pending ++;
+            self.connect(addr, function (err) {
+                pending --;
             });
         }
+        next();
     }
-    process.nextTick(function () { cb(null, false) });
 };
 
 Peernet.prototype._getNodesLoop = function (ms, size) {
