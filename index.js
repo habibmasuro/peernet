@@ -64,7 +64,6 @@ Peernet.prototype.bootstrap = function (n) {
     function write (node, enc, next) {
         var addr = node.address.toString();
         self._islocal(addr, function (err, local) {
-console.log('ISLOCAL:' + addr, err, local); 
             if (err || local) return;
             if (self.connections().indexOf(addr) < 0) {
                 pending ++;
@@ -98,6 +97,7 @@ Peernet.prototype._getNodesLoop = function (ms, size) {
         var disconnected = false;
         var timeout = null;
         var nodes = [];
+        var pending = 1;
         
         peer.once('disconnect', function () {
             disconnected = true;
@@ -112,15 +112,29 @@ Peernet.prototype._getNodesLoop = function (ms, size) {
         }
         function write (node, enc, next) {
             self._debug('node from %s: %s', peer.address, node.address);
-            nodes.push(node);
+            pending ++;
+            
+            self.db.get('rm!' + node.address.toString(), function (err, d) {
+                // ignore "recently" removed nodes (in the past day)
+                if (!err && Date.now() - d < 1000 * 60 * 60 * 24) {
+                    self._debug('skipping previously removed node %s',
+                        node.address
+                    );
+                }
+                else nodes.push(node);
+                if (-- pending === 0) done();
+            })
             next();
         }
         function end (next) {
+            if (-- pending === 0) done();
+            next();
+        }
+        function done () {
             self.save(nodes, function (err) {
                 if (err) self.emit('error', err);
                 setTimeout(getNodes, ms);
             });
-            next();
         }
     });
 };
@@ -239,13 +253,14 @@ Peernet.prototype.save = function (nodes, cb) {
 Peernet.prototype.remove = function (nodes, cb) {
     var self = this;
     cb = once(cb || function () {});
-    var keys = [];
+    var keys = [], rms = [];
     var db = this.db;
     var pending = 1;
     
     nodes.forEach(function (node) {
         var key = sha(node.address).toString('hex');
         keys.push('addr!' + key);
+        rms.push({ type: 'put', key: 'rm!' + key, value: Date.now() });
         pending += 2;
         
         var x = db.createReadStream({
@@ -272,9 +287,10 @@ Peernet.prototype.remove = function (nodes, cb) {
     
     function done () {
         if (-- pending !== 0) return;
-        db.batch(keys.map(function (key) {
+        var ops = keys.map(function (key) {
             return { type: 'del', key: key };
-        }), function (err) {
+        }).concat(rms);
+        db.batch(ops, function (err) {
             if (err) return cb(err);
             self._debug('removed %d nodes', keys.length);
             cb(null);
@@ -329,6 +345,7 @@ Peernet.prototype._purge = function (n, cb) {
     function end () { if (-- pending === 0) done() }
     function done () {
         if (remove.length) self.remove(remove, cb)
+        else if (cb) cb(null)
     }
 };
 
