@@ -34,8 +34,10 @@ function Peernet (db, opts) {
     var self = this;
     this.db = db;
     this._options = opts;
+    this._id = crypto.randomBytes(16);
     this._transport = opts.transport;
     this._connections = {};
+    this._ownAddress = {};
     
     var ivms = defined(opts.interval, 5000);
     var ivsize = defined(opts.size, 10);
@@ -63,6 +65,7 @@ Peernet.prototype.bootstrap = function (n) {
     
     function write (node, enc, next) {
         var addr = node.address.toString();
+        if (has(self._ownAddress, addr)) return next();
         if (self.connections().indexOf(addr) < 0) {
             pending ++;
             self.connect(addr, function (err) {
@@ -139,7 +142,14 @@ Peernet.prototype.connect = function (addr, cb) {
     this._connections[addr] = c;
     
     var peer = this.createStream(addr);
-    peer.hello(function () {
+    peer.hello(function (err, id) {
+        self._debug('HELLO %s', id.toString('hex')); 
+        if (self._id.toString('hex') === id.toString('hex')) {
+            // we've connected to ourself!
+            self._debug('connected to own service');
+            self._ownAddress[addr] = true;
+            return c.destroy();
+        }
         hello = true;
         self._logConnection(addr, { ok: true });
     });
@@ -169,6 +179,10 @@ Peernet.prototype.connect = function (addr, cb) {
         self.emit('disconnect', peer);
         peer.emit('disconnect');
     }
+};
+
+Peernet.prototype.own = function (cb) {
+    cb(null, Object.keys(this._ownAddress));
 };
 
 Peernet.prototype.known = function (opts) {
@@ -377,7 +391,7 @@ Peernet.prototype.getStats = function (addr, cb) {
 
 Peernet.prototype.createStream = function (addr) {
     var self = this;
-    var peer = new Peer(self.db);
+    var peer = new Peer(self.db, self._id);
     if (addr) peer.address = addr;
     if (addr) {
         var hello = false;

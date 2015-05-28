@@ -52,6 +52,17 @@ else if (argv._[0] === 'rm') {
         });
     });
 }
+else if (argv._[0] === 'own') {
+    auto(function (r, c) {
+        r.own(function (err, addrs) {
+            if (err) return error(err);
+            addrs.forEach(function (addr) {
+                console.log(addr);
+            });
+            c.destroy();
+        });
+    });
+}
 else if (argv._[0] === 'known') {
     auto(function (r, c) {
         r.known().pipe(split(JSON.parse)).pipe(through.obj(write, end));

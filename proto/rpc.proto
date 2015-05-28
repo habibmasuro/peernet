@@ -29,7 +29,7 @@ message HelloRequest {
     optional bytes address = 1;
 }
 message HelloResponse {
-    optional bytes address = 1;
+    required bytes id = 1;
 }
 
 message Message {
