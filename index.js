@@ -1,8 +1,6 @@
 var inherits = require('inherits');
 var EventEmitter = require('events').EventEmitter;
-var lenpre = require('length-prefixed-stream');
 var through = require('through2');
-var duplexer = require('duplexer2');
 var isarray = require('isarray');
 var sprintf = require('sprintf');
 var has = require('has');
@@ -16,9 +14,6 @@ var crypto = require('crypto');
 function sha (buf) {
     return crypto.createHash('sha512').update(buf).digest();
 }
-
-var memdown = require('memdown');
-var levelup = require('levelup');
 
 var Peer = require('./lib/peer.js');
 
@@ -37,6 +32,11 @@ function Peernet (db, opts) {
     var ivms = defined(opts.interval, 5000);
     var ivsize = defined(opts.size, 10);
     if (ivms) this._getNodesLoop(ivms, ivsize);
+    
+    if (opts.bootstrap !== false) {
+        var n = defined(opts.connections, 5);
+        
+    }
 }
 
 Peernet.prototype._getNodesLoop = function (ms, size) {
@@ -118,6 +118,18 @@ Peernet.prototype.connect = function (addr, cb) {
     }
 };
 
+Peernet.prototype.known = function (opts) {
+    var r = this.db.createReadStream({
+        gt: 'addr!' + defined(opts.gt, ''),
+        lt: 'addr!' + defined(opts.lt, '~'),
+        limit: opts.limit
+    });
+    return r.pipe(through.obj(function (row, enc, next) {
+        this.push(JSON.stringify(row) + '\n');
+        next();
+    }));
+};
+
 Peernet.prototype.disconnect = function (addr) {
     if (has(this._connections, addr)) {
         this._connections[addr].destroy();
@@ -130,6 +142,7 @@ Peernet.prototype.connections = function () {
 };
 
 Peernet.prototype.save = function (nodes, cb) {
+    var self = this;
     this.db.batch(concatMap(nodes, function (node) {
         var key = sha(node.address).toString('hex');
         return [
@@ -140,6 +153,10 @@ Peernet.prototype.save = function (nodes, cb) {
             }
         ];
     }), cb);
+    
+    nodes.forEach(function (node) {
+        self.emit('known', node);
+    });
 };
 
 Peernet.prototype.remove = function (nodes, cb) {

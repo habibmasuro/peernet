@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 var path = require('path');
+var fs = require('fs');
 var defined = require('defined');
 var HOME = defined(process.env.HOME, process.env.USERDIR);
 var DIR = defined(
@@ -20,6 +21,7 @@ var argv = minimist(process.argv.slice(2), {
     }
 });
 var autod = require('auto-daemon');
+var createServer = require('auto-daemon/server');
 var mkdirp = require('mkdirp');
 var rpc = require('../lib/rpc.js');
 
@@ -39,6 +41,13 @@ else if (argv._[0] === 'rm') {
             if (err) error(err)
             else c.destroy()
         });
+    });
+}
+else if (argv._[0] === 'known') {
+    auto(function (r, c) {
+        var s = r.known(argv);
+        s.pipe(process.stdout);
+        s.once('end', function () { c.destroy() });
     });
 }
 else if (argv._[0] === 'connections') {
@@ -92,6 +101,15 @@ else if (argv._[0] === 'listen') {
         });
     });
 }
+else if (argv._[0] === 'daemon') {
+    auto({ autoclose: false }, function (err, r, c) {
+        if (err) error(err)
+        else c.destroy()
+    });
+}
+else if (argv._[0] === 'server') {
+    fs.unlink(argv.sockfile, listen);
+}
 else if (argv._[0] === 'close') {
     auto(function (r, c) {
         r.close(function () { c.destroy() });
@@ -99,13 +117,29 @@ else if (argv._[0] === 'close') {
     });
 }
 
-function auto (cb) {
+function listen () {
+    var opts = {
+        _: [ '-d', argv.datadir ],
+        autoclose: false
+    };
+    mkdirp(path.dirname(argv.sockfile), function () {
+        var server = createServer(rpc, opts);
+        server.listen(argv.sockfile);
+    });
+}
+
+function auto (opts_, cb) {
+    if (typeof opts_ === 'function') {
+        cb = opts_;
+        opts_ = {};
+    }
     var opts = {
         rpcfile: path.join(__dirname, '../lib/rpc.js'),
         sockfile: argv.sockfile,
         methods: rpc.methods,
         debug: argv.debug,
-        args: [ '-d', argv.datadir ]
+        args: [ '-d', argv.datadir ],
+        autoclose: opts_.autoclose
     };
     var pending = 2;
     mkdirp(path.dirname(opts.sockfile),ready);

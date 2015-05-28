@@ -11,6 +11,7 @@
     "test": "test"
   },
   "dependencies": {
+    "auto-daemon": "^2.0.0",
     "concat-map": "0.0.1",
     "defined": "^1.0.0",
     "duplexer2": "^0.0.2",
