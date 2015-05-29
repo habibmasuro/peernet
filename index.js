@@ -12,10 +12,6 @@ var readonly = require('read-only-stream');
 var lenpre = require('length-prefixed-stream');
 
 var decoder = require('./lib/decoder.js');
-
-var dns = require('dns');
-var url = require('url');
-var os = require('os');
 var EventEmitter = require('events').EventEmitter;
 
 var crypto = require('crypto');
