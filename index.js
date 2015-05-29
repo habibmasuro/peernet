@@ -213,6 +213,37 @@ Peernet.prototype.known = function (opts) {
     }
 };
 
+Peernet.prototype.join = function (subnets, cb) {
+    if (!isarray(subnets)) subnets = [ subnets ];
+    this.db.batch(subnets.map(function (subnet) {
+        return {
+            type: 'put',
+            key: 'subnet!' + subnet,
+            value: 0
+        };
+    }), cb);
+};
+
+Peernet.prototype.part = function (subnets, cb) {
+    if (!isarray(subnets)) subnets = [ subnets ];
+    this.db.batch(subnets.map(function (subnet) {
+        return {
+            type: 'del',
+            key: 'subnet!' + subnet
+        };
+    }), cb);
+};
+
+Peernet.prototype.subnets = function (cb) {
+    var r = this.db.createReadStream({ gt: 'subnet!', lt: 'subnet!~' });
+    return readonly(r.pipe(through.obj(write)));
+    
+    function write (row, enc, next) {
+        this.push(row.key.split('!')[1] + '\n');
+        next();
+    }
+};
+
 Peernet.prototype.disconnect = function (addr) {
     if (has(this._connections, addr)) {
         this._connections[addr].destroy();

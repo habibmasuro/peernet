@@ -139,6 +139,29 @@ else if (argv._[0] === 'listen') {
         });
     });
 }
+else if (argv._[0] === 'join') {
+    auto(function (r, c) {
+        r.join(argv._[1], function (err) {
+            if (err) error(err)
+            else c.destroy()
+        });
+    });
+}
+else if (argv._[0] === 'part') {
+    auto(function (r, c) {
+        r.part(argv._[1], function (err) {
+            if (err) error(err)
+            else c.destroy()
+        });
+    });
+}
+else if (argv._[0] === 'subnets') {
+    auto(function (r, c) {
+        var s = r.subnets(argv._[1]);
+        s.pipe(process.stdout);
+        s.on('end', function () { c.destroy() });
+    });
+}
 else if (argv._[0] === 'daemon') {
     auto({ autoclose: false }, function (err, r, c) {
         if (err) error(err)
