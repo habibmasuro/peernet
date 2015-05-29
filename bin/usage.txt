@@ -22,6 +22,14 @@ peernet connections
 
   Show the active connections.
 
+peernet connect ADDR
+
+  Connect to ADDR.
+
+peernet disconnect ADDR.
+
+  Disconnect from ADDR.
+
 peernet add ADDR
 
   Add ADDR to the address tables without connecting.
@@ -30,13 +38,17 @@ peernet rm ADDR
 
   Remove ADDR from the address tables.
 
-peernet connect ADDR
+peernet join SUBNET
 
-  Connect to ADDR.
+  Join SUBNET: respond to searches for SUBNET peers.
 
-peernet disconnect ADDR.
+peernet part SUBNET
 
-  Disconnect from ADDR.
+  Part SUBNET: stop responding to searches for SUBNET peers.
+
+peernet subnets
+
+  Print subnet membership, one per line.
 
 peernet listen PROTOCOL
 
