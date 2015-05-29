@@ -6,9 +6,6 @@ message NodeRequest {
 
 message NodeResponse {
   required bytes address = 1;
-  repeated bytes subnets = 2;
-  optional bytes previous = 3;
-  optional bytes key = 4;
 }
 
 message SearchRequest {
