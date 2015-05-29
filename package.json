@@ -25,6 +25,7 @@
     "protocol-buffers": "^3.0.0",
     "read-only-stream": "^1.1.1",
     "readable-stream": "^1.0.33",
+    "shuffle-array": "^0.1.0",
     "simple-peer": "^5.4.3",
     "sprintf": "^0.1.5",
     "through2": "^0.6.5",

@@ -158,8 +158,28 @@ else if (argv._[0] === 'part') {
 else if (argv._[0] === 'subnets') {
     auto(function (r, c) {
         var s = r.subnets(argv._[1]);
-        s.pipe(process.stdout);
-        s.on('end', function () { c.destroy() });
+        s.pipe(split(JSON.parse))
+            .pipe(through.obj(function (row, enc, next) {
+                this.push(row.key + '\n');
+                next();
+            }))
+            .on('end', function () { c.destroy() })
+            .pipe(process.stdout)
+        ;
+    });
+}
+
+else if (argv._[0] === 'search') {
+    auto(function (r, c) {
+        var s = r.search(argv._[1]);
+        s.pipe(split(JSON.parse))
+            .pipe(through.obj(function (row, enc, next) {
+                this.push(Buffer(row.address, 'base64').toString() + '\n');
+                next();
+            }))
+            .on('end', function () { c.destroy() })
+            .pipe(process.stdout)
+        ;
     });
 }
 else if (argv._[0] === 'daemon') {

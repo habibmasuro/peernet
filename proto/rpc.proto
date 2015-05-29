@@ -23,7 +23,7 @@ message CloseRequest {}
 message CloseResponse {}
 
 message HelloRequest {
-    optional bytes address = 1;
+    required bytes address = 1;
 }
 message HelloResponse {
     required bytes id = 1;

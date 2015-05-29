@@ -3,9 +3,11 @@ var has = require('has');
 var defined = require('defined');
 var isarray = require('isarray');
 var once = require('once');
+var onend = require('end-of-stream');
 
 var sprintf = require('sprintf');
 var concatMap = require('concat-map');
+var shuffle = require('shuffle-array');
 
 var through = require('through2');
 var readonly = require('read-only-stream');
@@ -33,6 +35,7 @@ function Peernet (db, opts) {
     this._id = crypto.randomBytes(16);
     this._transport = opts.transport;
     this._connections = {};
+    this._peers = {};
     this._ownAddress = {};
     
     var ivms = defined(opts.interval, 5000);
@@ -132,13 +135,12 @@ Peernet.prototype.connect = function (addr, cb) {
     cb = once(cb || function () {});
     var self = this;
     var c = this._transport(addr);
-    var closed = false;
     var hello = false;
     
     this._connections[addr] = c;
     
     var peer = this.createStream(addr);
-    peer.hello(function (err, id) {
+    peer.hello(addr, function (err, id) {
         self._debug('HELLO %s', id.toString('hex')); 
         if (self._id.toString('hex') === id.toString('hex')) {
             // we've connected to ourself!
@@ -151,9 +153,8 @@ Peernet.prototype.connect = function (addr, cb) {
     });
     
     c.pipe(peer).pipe(c);
-    c.once('error', onend);
-    c.once('end', onend);
     c.once('error', cb);
+    onend(c, onclose);
     
     c.once('connect', function () {
         self._debug('connected: %s', addr);
@@ -163,13 +164,12 @@ Peernet.prototype.connect = function (addr, cb) {
     });
     return peer;
     
-    function onend () {
-        if (closed) return;
-        closed = true;
+    function onclose () {
         if (!hello) {
             self._logConnection(addr, { ok: false });
         }
         delete self._connections[addr];
+        delete self._peers[addr];
         if (c.destroy) c.destroy();
         self._debug('disconnected: %s', addr);
         self.emit('disconnect', peer);
@@ -252,9 +252,20 @@ Peernet.prototype.subnets = function (cb) {
     return readonly(r.pipe(through.obj(write)));
     
     function write (row, enc, next) {
-        this.push(row.key.split('!')[1] + '\n');
+        this.push({ key: row.key.split('!')[1] });
         next();
     }
+};
+
+Peernet.prototype.search = function (subnet) {
+    var self = this;
+    var output = through.obj();
+    var hkey = sha(subnet);
+    Object.keys(self._peers).forEach(function (key) {
+        var peer = self._peers[key];
+        peer.search(hkey).pipe(output, { end: false });
+    });
+    return readonly(output);
 };
 
 Peernet.prototype.disconnect = function (addr) {
@@ -431,7 +442,7 @@ Peernet.prototype.getStats = function (addr, cb) {
 
 Peernet.prototype.createStream = function (addr) {
     var self = this;
-    var peer = new Peer(self.db, self._id);
+    var peer = new Peer(self.db, self._id, addr);
     if (addr) peer.address = addr;
     if (addr) {
         var hello = false;
@@ -446,6 +457,29 @@ Peernet.prototype.createStream = function (addr) {
             self._logConnection(addr, { ok: true });
         });
     }
+    else {
+        addr = randomBytes(16).toString('hex');
+    }
+    self._peers[addr] = peer;
+    onend(peer, function () { delete self._peers[key] });
+    
+    peer.on('debug', function () {
+        self._debug.apply(self, arguments);
+    });
+    peer.on('search', function (req, fn) {
+        var keys = Object.keys(self._peers).filter(function (key) {
+            return key !== addr;
+        });
+        shuffle(keys).slice(0,3).forEach(function (key) {
+            self._peers[key].search(req).pipe(through.obj(
+                function (row, enc, next) {
+                    fn(row);
+                    next();
+                }
+            ));
+        });
+    });
+    
     self.emit('peer', peer);
     return peer;
 };
