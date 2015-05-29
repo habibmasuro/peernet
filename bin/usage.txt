@@ -50,6 +50,10 @@ peernet subnets
 
   Print subnet membership, one per line.
 
+peernet search SUBNET
+
+  Search for peers that belong to SUBNET, printing addresses per line.
+
 peernet listen PROTOCOL
 
   Create a service for PROTOCOL, optionally on a `--port`.
