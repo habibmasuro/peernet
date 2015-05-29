@@ -215,22 +215,35 @@ Peernet.prototype.known = function (opts) {
 
 Peernet.prototype.join = function (subnets, cb) {
     if (!isarray(subnets)) subnets = [ subnets ];
-    this.db.batch(subnets.map(function (subnet) {
-        return {
-            type: 'put',
-            key: 'subnet!' + subnet,
-            value: 0
-        };
+    this.db.batch(concatMap(subnets, function (subnet) {
+        return [
+            {
+                type: 'put',
+                key: 'subnet!' + subnet,
+                value: 0
+            },
+            {
+                type: 'put',
+                key: 'subhash!' + sha(subnet).toString('hex'),
+                value: subnet
+            },
+        ];
     }), cb);
 };
 
 Peernet.prototype.part = function (subnets, cb) {
     if (!isarray(subnets)) subnets = [ subnets ];
-    this.db.batch(subnets.map(function (subnet) {
-        return {
-            type: 'del',
-            key: 'subnet!' + subnet
-        };
+    this.db.batch(concatMap(subnets, function (subnet) {
+        return [
+            {
+                type: 'del',
+                key: 'subnet!' + subnet
+            },
+            {
+                type: 'del',
+                key: 'subhash!' + sha(subnet).toString('hex')
+            },
+        ];
     }), cb);
 };
 
