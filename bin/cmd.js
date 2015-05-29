@@ -44,7 +44,7 @@ else if (argv._[0] === 'log') {
 }
 else if (argv._[0] === 'add') {
     auto(function (r, c) {
-        r.add(argv._.slice(1), function (err) {
+        r.add({ address: argv._.slice(1) }, function (err) {
             if (err) error(err)
             else c.destroy()
         });
