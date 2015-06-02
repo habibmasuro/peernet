@@ -281,7 +281,9 @@ Peernet.prototype.connections = function () {
 
 Peernet.prototype.save = function (nodes, cb) {
     var self = this;
+    if (!isarray(nodes)) nodes = [nodes];
     this.db.batch(concatMap(nodes, function (node) {
+        if (typeof node === 'string') node = { address: node };
         var key = sha(node.address).toString('hex');
         return [
             {

@@ -1,12 +1,9 @@
 var onend = require('end-of-stream');
+var http = require('http');
+var wsock = require('websocket-stream');
 
 module.exports = function (pn) {
     var server = http.createServer(function (req, res) { res.end() });
-    server.listen(opts.port, function () {
-        var addr = server.address();
-        pn._debug('listening on %s:%d', addr.address, addr.port);
-    });
-    
     wsock.createServer({ server: server }, function (stream) {
         var addr = stream.socket.upgradeReq.socket.remoteAddress;
         var port = stream.socket.upgradeReq.socket.remotePort;
