@@ -475,12 +475,12 @@ Peernet.prototype.createStream = function (addr) {
     peer.on('debug', function () {
         self._debug.apply(self, arguments);
     });
-    peer.on('search', function (req, fn) {
+    peer.on('search', function (hash, hops, fn) {
         var keys = Object.keys(self._peers).filter(function (key) {
             return key !== addr;
         });
         shuffle(keys).slice(0,3).forEach(function (key) {
-            self._peers[key].search(req).pipe(through.obj(
+            self._peers[key].search(hash, hops + 1).pipe(through.obj(
                 function (row, enc, next) {
                     fn(row);
                     next();

@@ -21,6 +21,7 @@ test('network', function (t) {
         var db = level(path.join(tmpdir, ''+Math.random()));
         var peer = peernet(db, {
             transport: transport,
+            interval: 100,
             //debug: true
         });
         var server = wsock(peer);
