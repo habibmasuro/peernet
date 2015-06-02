@@ -140,6 +140,13 @@ Peernet.prototype.connect = function (addr, cb) {
     this._connections[addr] = c;
     
     var peer = this.createStream(addr);
+    peer.on('hello-reply', function (id) {
+        self.emit('hello-reply', id);
+    });
+    peer.on('hello-request', function (hello) {
+        self.emit('hello-request', hello);
+    });
+    
     peer.hello(addr, function (err, id) {
         self._debug('HELLO %s', id.toString('hex')); 
         if (self._id.toString('hex') === id.toString('hex')) {
@@ -463,7 +470,7 @@ Peernet.prototype.createStream = function (addr) {
         addr = randomBytes(16).toString('hex');
     }
     self._peers[addr] = peer;
-    onend(peer, function () { delete self._peers[key] });
+    onend(peer, function () { delete self._peers[addr] });
     
     peer.on('debug', function () {
         self._debug.apply(self, arguments);
