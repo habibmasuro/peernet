@@ -31,8 +31,8 @@ test('linear', function (t) {
         var peer = peernet(db, {
             transport: transport,
             interval: 0,
-            bootstrap: false
-            //debug: true
+            bootstrap: false,
+            debug: true
         });
         var server = wsock(peer);
         pending ++;
@@ -52,12 +52,12 @@ test('linear', function (t) {
     
     function ready () {
         var pending = 0;
-        for (var i = 0; i < peers.length - 1; i++) {
+        for (var i = 1; i < peers.length; i++) {
             pending += 2;
             peers[i].once('hello-reply', function (hello) {
                 if (-- pending === 0) connected();
             });
-            peers[i].connect(addrs[i+1], function (err) {
+            peers[i].connect(addrs[i-1], function (err) {
                 t.ifError(err);
                 if (-- pending === 0) connected();
             });

@@ -467,7 +467,7 @@ Peernet.prototype.createStream = function (addr) {
         });
     }
     else {
-        addr = randomBytes(16).toString('hex');
+        addr = crypto.randomBytes(16).toString('hex');
     }
     self._peers[addr] = peer;
     onend(peer, function () { delete self._peers[addr] });
