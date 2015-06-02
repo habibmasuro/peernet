@@ -2,26 +2,36 @@ var test = require('tape');
 var mkdirp = require('mkdirp');
 var level = require('level');
 var path = require('path');
+var through = require('through2');
 
 var peernet = require('../');
 var transport = require('../transport.js');
 var wsock = require('../server/wsock.js');
 
-var tmpdir = path.join(__dirname, 'peernet-test-' + Math.random());
+var os = require('os');
+var tmpdir = path.join(os.tmpdir(), 'peernet-test-' + Math.random());
 mkdirp.sync(tmpdir);
 
-test('network', function (t) {
+test('linear', function (t) {
     var peers = [];
     var addrs = [];
     var pending = 0;
-    var n = 20;
-    t.plan(n * 2);
+    var n = 5;
+    t.plan(n * 2 - 1 + 2);
+    t.on('end', function () {
+        peers.forEach(function (peer) {
+            peer.connections().forEach(function (addr) {
+                peer.disconnect(addr);
+            });
+        });
+    });
     
     for (var i = 0; i < n; i++) (function () {
         var db = level(path.join(tmpdir, ''+Math.random()));
         var peer = peernet(db, {
             transport: transport,
-            interval: 100,
+            interval: 0,
+            bootstrap: false
             //debug: true
         });
         var server = wsock(peer);
@@ -33,6 +43,9 @@ test('network', function (t) {
                 t.ifError(err, 'saved node ' + addr);
                 if (-- pending === 0) ready();
             });
+        });
+        t.on('end', function () {
+            server.close();
         });
         peers.push(peer);
     })();
@@ -53,21 +66,25 @@ test('network', function (t) {
     
     function connected () {
         setTimeout(function () {
-            //peers[3].disconnect(addrs[4]);
-            //peers[4].disconnect(addrs[5]);
-            //peers[13].disconnect(addrs[14]);
-            
             peers[0].join('whatever', function () {
                 setTimeout(search, 1000);
             });
-        }, 6000);
+        }, 1000);
     }
     
     function search () {
-console.log('SEARCH'); 
         var s = peers[peers.length-1].search('whatever');
-        s.on('data', function (res) {
-            console.log('RES=', res);
-        });
+        var expected = [
+            {
+                address: addrs[0],
+                hops: n - 2
+            }
+        ];
+        s.pipe(through.obj(function (row, enc, next) {
+            var ex = expected.shift();
+            t.equal(row.hops, ex.hops);
+            t.equal(row.address+'', ex.address+'');
+            next();
+        }));
     }
 });
