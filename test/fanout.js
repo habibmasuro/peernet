@@ -17,8 +17,8 @@ test('fanout', function (t) {
     var addrs = [];
     var servers = [];
     var pending = 0;
-    var n = 8;
-    t.plan(n * 2);
+    var n = 20;
+    t.plan((n-1) * 4 + 1);
     t.on('end', function () {
         peers.forEach(function (peer) {
             peer.close();
@@ -52,14 +52,20 @@ test('fanout', function (t) {
     function ready () {
         var pending = 0;
         for (var i = 1; i < peers.length; i++) {
-            pending += 2;
+            pending ++;
             peers[i].once('hello-reply', function (hello) {
                 if (-- pending === 0) connected();
             });
-            peers[i].connect(addrs[i-1], function (err) {
-                t.ifError(err);
-                if (-- pending === 0) connected();
-            });
+            for (var j = 0; j < 3; j++) {
+                pending ++;
+                do { var a = Math.floor(Math.random() * peers.length) }
+                while (i === a);
+                
+                peers[i].connect(addrs[j], function (err) {
+                    t.ifError(err);
+                    if (-- pending === 0) connected();
+                });
+            }
         }
     }
     
@@ -68,12 +74,13 @@ test('fanout', function (t) {
             peers[0].join('whatever', function () {
                 var iv = setInterval(function () { search(iv) }, 1000);
             });
-        }, 4000);
+        }, 2000);
         
         var iv = setInterval(function () {
-            var i = Math.floor((peers.length-2) * Math.random() + 2);
+            // connection chaos
+            var i = Math.floor((peers.length-2) * Math.random() + 1);
             peers[i].disconnect(addrs[i-1]);
-        }, 1000);
+        }, 500);
         
         t.once('end', function () {
             clearInterval(iv);
