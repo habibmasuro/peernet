@@ -32,8 +32,8 @@ test('fanout', function (t) {
         var db = level(path.join(tmpdir, ''+Math.random()));
         var peer = peernet(db, {
             transport: transport,
-            interval: 50,
-            debug: true
+            interval: 500
+            //debug: true
         });
         var server = wsock(peer);
         pending ++;
@@ -70,17 +70,18 @@ test('fanout', function (t) {
             peers[11].disconnect(addrs[10], ready);
             
             peers[0].join('whatever', function () {
-                setTimeout(search, 5000);
+                var iv = setInterval(function () { search(iv) }, 500);
             });
-        }, 5000);
+        }, 4000);
     }
     
-    function search () {
+    function search (iv) {
         var s = peers[peers.length-1].search('whatever');
         var expected = [ { address: addrs[0] } ];
         s.pipe(through.obj(function (row, enc, next) {
             var ex = expected.shift();
             t.equal(row.address+'', ex.address+'', 'search result');
+            clearInterval(iv);
         }));
     }
 });

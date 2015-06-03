@@ -92,20 +92,27 @@ Peernet.prototype._getNodesLoop = function (ms, size) {
     self.on('peer', function (peer) {
         var disconnected = false;
         var timeout = null;
-        var nodes = [];
-        var pending = 1;
         
         peer.once('disconnect', function () {
             disconnected = true;
             clearTimeout(timeout);
         });
-        getNodes();
-        
-        function getNodes () {
+        getNodes(peer, function f () {
             if (disconnected) return;
-            self._debug('get nodes: %s', peer.address);
-            peer.getNodes(size).pipe(through.obj(write, end));
-        }
+            timeout = setTimeout(function () {
+                if (disconnected) return;
+                getNodes(peer, f);
+            }, ms);
+        });
+    });
+    
+    function getNodes (peer, cb) {
+        self._debug('get nodes: %s', peer.address);
+        
+        var nodes = [];
+        var pending = 1;
+        peer.getNodes(size).pipe(through.obj(write, end));
+        
         function write (node, enc, next) {
             self._debug('node from %s: %s', peer.address, node.address);
             pending ++;
@@ -129,10 +136,10 @@ Peernet.prototype._getNodesLoop = function (ms, size) {
         function done () {
             self.save(nodes, function (err) {
                 if (err) self.emit('error', err);
-                setTimeout(getNodes, ms);
+                cb();
             });
         }
-    });
+    }
 };
 
 Peernet.prototype._debug = function () {
