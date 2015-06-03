@@ -186,7 +186,7 @@ Peernet.prototype.connect = function (addr, cb) {
         self._debug('connected: %s', addr);
         self.emit('connect', peer);
         peer.emit('connect');
-        cb(null, cb);
+        cb(null);
     });
     return peer;
     
@@ -227,10 +227,7 @@ Peernet.prototype.known = function (opts) {
         var out = readonly(r.pipe(through.obj(function (row, enc, next) {
             var ref = decoder.NodeResponse.decode(row.value)
             this.push(JSON.stringify({
-                address: ref.address.toString('base64'),
-                subnets: ref.subnets,
-                previous: ref.previous,
-                key: ref.key
+                address: ref.address.toString('base64')
             }) + '\n');
             next();
         })));
@@ -273,7 +270,7 @@ Peernet.prototype.part = function (subnets, cb) {
     }), cb);
 };
 
-Peernet.prototype.subnets = function (cb) {
+Peernet.prototype.subnets = function () {
     var r = this.db.createReadStream({ gt: 'subnet!', lt: 'subnet!~' });
     return readonly(r.pipe(through.obj(write)));
     
