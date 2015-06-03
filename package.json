@@ -33,7 +33,9 @@
     "websocket-stream": "^1.5.0",
     "wrtc": "^0.0.55"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "tape": "^4.0.0"
+  },
   "scripts": {
     "test": "tape test/*.js"
   },
