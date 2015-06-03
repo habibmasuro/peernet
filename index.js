@@ -37,6 +37,8 @@ function Peernet (db, opts) {
     this._connections = {};
     this._peers = {};
     this._ownAddress = {};
+    this._recent = {};
+    this._intervals = [];
     
     var ivms = defined(opts.interval, 5000);
     var ivsize = defined(opts.size, 10);
@@ -52,15 +54,15 @@ Peernet.prototype.bootstrap = function (n) {
     var self = this;
     var pending = 0;
     
-    setInterval(function () {
+    this._intervals.push(setInterval(function () {
         var needed = n - pending - self.connections().length;
         if (needed === 0) return;
         randomPeers(self.db, needed).pipe(through.obj(write));
-    }, 5000);
+    }, 5000));
     
-    setInterval(function () {
+    this._intervals.push(setInterval(function () {
         self._purge(10);
-    }, 5000);
+    }, 5000));
     
     function write (node, enc, next) {
         var addr = node.address.toString();
@@ -73,6 +75,16 @@ Peernet.prototype.bootstrap = function (n) {
         }
         next();
     }
+};
+
+Peernet.prototype.close = function () {
+    var self = this;
+    self._intervals.forEach(function (iv) {
+        clearInterval(iv);
+    });
+    self.connections().forEach(function (addr) {
+        self.disconnect(addr);
+    });
 };
 
 Peernet.prototype._getNodesLoop = function (ms, size) {
@@ -451,7 +463,9 @@ Peernet.prototype.getStats = function (addr, cb) {
 
 Peernet.prototype.createStream = function (addr) {
     var self = this;
-    var peer = new Peer(self.db, self._id, addr);
+    var peer = new Peer(self.db, self._id, addr, {
+        recent: self._recent
+    });
     if (addr) peer.address = addr;
     if (addr) {
         var hello = false;

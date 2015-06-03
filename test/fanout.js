@@ -21,9 +21,7 @@ test('fanout', function (t) {
     t.plan(n * 2);
     t.on('end', function () {
         peers.forEach(function (peer) {
-            peer.connections().forEach(function (addr) {
-                if (/^ws:/.test(addr)) peer.disconnect(addr);
-            });
+            peer.close();
         });
         servers.forEach(function (server) {
             server.close();
@@ -34,7 +32,7 @@ test('fanout', function (t) {
         var db = level(path.join(tmpdir, ''+Math.random()));
         var peer = peernet(db, {
             transport: transport,
-            interval: 100,
+            interval: 50,
             debug: true
         });
         var server = wsock(peer);
@@ -72,9 +70,9 @@ test('fanout', function (t) {
             peers[11].disconnect(addrs[10], ready);
             
             peers[0].join('whatever', function () {
-                setTimeout(search, 3000);
+                setTimeout(search, 5000);
             });
-        }, 3000);
+        }, 5000);
     }
     
     function search () {
