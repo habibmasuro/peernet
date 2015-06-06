@@ -28,6 +28,8 @@ test('bootstrap setup', function (t) {
         var peer = peernet(db, {
             transport: transport
         });
+        peers.push(peer);
+        
         var server = wsock(peer);
         server.listen(function () {
             var addr = 'ws://localhost:' + server.address().port;
@@ -37,7 +39,7 @@ test('bootstrap setup', function (t) {
                 if (-- pending === 0) ready();
             });
         });
-        peers.push(peer);
+        servers.push(server);
     })();
     
     // 25 peers without servers, like browsers
