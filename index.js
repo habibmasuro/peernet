@@ -23,6 +23,7 @@ function sha (buf) {
 
 var Peer = require('./lib/peer.js');
 var randomPeers = require('./lib/random.js');
+var wrtc = require('./lib/wrtc.js');
 
 module.exports = Peernet;
 inherits(Peernet, EventEmitter);
@@ -57,7 +58,13 @@ Peernet.prototype.bootstrap = function (n) {
     this._intervals.push(setInterval(function () {
         var needed = n - pending - self.connections().length;
         if (needed === 0) return;
-        randomPeers(self.db, needed).pipe(through.obj(write));
+        if (self.connections().length > 0 && Math.random() > 0.5) {
+            pending ++;
+            self.peer('webrtc', function (err, peer, addrs) {
+                pending --;
+            });
+        }
+        else randomPeers(self.db, needed).pipe(through.obj(write));
     }, 5000));
     
     this._intervals.push(setInterval(function () {
@@ -201,6 +208,29 @@ Peernet.prototype.connect = function (addr, cb) {
         self.emit('disconnect', peer);
         peer.emit('disconnect');
     }
+};
+
+Peernet.prototype.peer = function (proto, cb) {
+    var self = this;
+    if (proto === 'wrtc' || proto === 'webrtc') {
+        wrtc(this, function (err, con, addrs) {
+            var peer = self.createStream();
+            con.pipe(peer).pipe(con);
+            
+            self._connections[addrs.local] = con;
+            onend(con, function () {
+                delete self._connections[addrs.local];
+                self.emit('disconnect', peer);
+                self._debug('disconnected: %s', addrs.remote);
+                peer.emit('disconnect');
+            });
+            
+            self._debug('connected: %s', addrs.local);
+            self.emit('connect', peer);
+            cb(err, con, addrs);
+        });
+    }
+    else throw new Error('unrecognized protocol');
 };
 
 Peernet.prototype.own = function (cb) {
@@ -494,6 +524,7 @@ Peernet.prototype.createStream = function (addr) {
         self._debug.apply(self, arguments);
     });
     peer.on('search', function (hash, hops, fn) {
+        self.emit('search', hash, hops, fn);
         var keys = Object.keys(self._peers).filter(function (key) {
             return key !== addr;
         });
