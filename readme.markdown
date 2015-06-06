@@ -161,6 +161,19 @@ Stop responding to search queries for the subnet.
 
 Subnet membership persists to the database.
 
+## var r = pn.search(query)
+
+Perform a search for `query`, a Buffer payload.
+
+Returns a readable object stream `r` of search rows:
+
+* `row.hash` - response subnet name
+* `row.address` - responding address
+* `row.hops` - number of hops to the responding address
+
+Other nodes will forward the search query along or respond themselves if they
+have relevant content.
+
 ## var r = pn.subnets()
 
 Return a readable object stream `r` with all the joined subnets.
