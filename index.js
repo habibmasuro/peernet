@@ -61,6 +61,7 @@ Peernet.prototype.bootstrap = function (n) {
         if (self.connections().length > 0 && Math.random() > 0.5) {
             pending ++;
             self.peer('webrtc', function (err, peer, addrs) {
+                if (!err) console.log('WEBRTC!!!!!!!!!!!!!!!!!!!!!', err); 
                 pending --;
             });
         }
@@ -68,7 +69,7 @@ Peernet.prototype.bootstrap = function (n) {
     }, 5000));
     
     this._intervals.push(setInterval(function () {
-        self._purge(10);
+        //self._purge(10);
     }, 5000));
     
     function write (node, enc, next) {
@@ -214,6 +215,7 @@ Peernet.prototype.peer = function (proto, cb) {
     var self = this;
     if (proto === 'wrtc' || proto === 'webrtc') {
         wrtc(this, function (err, con, addrs) {
+            if (err) return cb(err);
             var peer = self.createStream();
             con.pipe(peer).pipe(con);
             
@@ -313,10 +315,9 @@ Peernet.prototype.subnets = function () {
 Peernet.prototype.search = function (subnet) {
     var self = this;
     var output = through.obj();
-    var hkey = sha(subnet);
     Object.keys(self._peers).forEach(function (key) {
         var peer = self._peers[key];
-        peer.search(hkey).pipe(output, { end: false });
+        peer.search(subnet).pipe(output, { end: false });
     });
     return readonly(output);
 };
