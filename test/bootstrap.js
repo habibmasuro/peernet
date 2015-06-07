@@ -26,7 +26,10 @@ test('bootstrap setup', function (t) {
         pending ++;
         var db = level(path.join(tmpdir, ''+Math.random()));
         var peer = peernet(db, {
-            transport: transport
+            transport: transport,
+            interval: 2000,
+            connections: 10
+            //debug: true
         });
         peers.push(peer);
         
@@ -54,12 +57,34 @@ test('bootstrap setup', function (t) {
     function ready () {
         pending = peers.length;
         peers.forEach(function (peer) {
-            var nodes = shuf(addrs.slice()).slice(0,Math.random()*4+1)
+            var nodes = shuf(addrs.slice()).slice(0,Math.random()*2+3)
             peer.save(nodes, function (err) {
                 t.ifError(err);
             });
         });
     }
+});
+
+test('bootstrap', function (t) {
+    t.plan(2);
+    console.log('waiting for connections');
+    setTimeout(function () {
+        var stats = { ws: 0, wrtc: 0 };
+        for (var i = 5; i < 30; i++) {
+            var cons = peers[i].connections();
+            cons.forEach(function (c) {
+                if (/^ws:/.test(c)) {
+                    stats.ws ++;
+                }
+                else if (/^wrtc:/.test(c)) {
+                    stats.wrtc ++;
+                }
+            });
+        }
+        console.log('STATS:', stats);
+        t.ok(stats.ws >= 50, 'enough websocket connections');
+        t.ok(stats.wrtc >= 50, 'enough webrtc connections');
+    }, 1000*10);
 });
 
 test('bootstrap teardown', function (t) {

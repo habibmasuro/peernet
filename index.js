@@ -46,14 +46,15 @@ function Peernet (db, opts) {
     if (ivms) this._getNodesLoop(ivms, ivsize);
     
     if (opts.bootstrap !== false) {
-        var n = defined(opts.connections, 5);
-        this.bootstrap(n);
+        this.bootstrap(opts);
     }
 };
 
-Peernet.prototype.bootstrap = function (n) {
+Peernet.prototype.bootstrap = function (opts) {
     var self = this;
     var pending = 0;
+    var n = defined(opts.connections, 5);
+    var ivms = defined(opts.interval, 5000);
     
     this._intervals.push(setInterval(function () {
         var needed = n - pending - self.connections().length;
@@ -61,16 +62,15 @@ Peernet.prototype.bootstrap = function (n) {
         if (self.connections().length > 0 && Math.random() > 0.5) {
             pending ++;
             self.peer('webrtc', function (err, peer, addrs) {
-                if (!err) console.log('WEBRTC!!!!!!!!!!!!!!!!!!!!!', err); 
                 pending --;
             });
         }
         else randomPeers(self.db, needed).pipe(through.obj(write));
-    }, 5000));
+    }, ivms));
     
     this._intervals.push(setInterval(function () {
         //self._purge(10);
-    }, 5000));
+    }, ivms));
     
     function write (node, enc, next) {
         var addr = node.address.toString();
@@ -537,6 +537,9 @@ Peernet.prototype.createStream = function (addr) {
                 }
             ));
         });
+    });
+    peer.on('error', function (err) {
+        self.emit('error', err)
     });
     
     self.emit('peer', peer);
