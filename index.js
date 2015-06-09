@@ -15,6 +15,7 @@ var lenpre = require('length-prefixed-stream');
 
 var decoder = require('./lib/decoder.js');
 var EventEmitter = require('events').EventEmitter;
+var getBrowserRTC = require('get-browser-rtc');
 
 var crypto = require('crypto');
 function sha (buf) {
@@ -40,6 +41,10 @@ function Peernet (db, opts) {
     this._ownAddress = {};
     this._recent = {};
     this._intervals = [];
+    this._wrtc = opts.wrtc === false
+        ? undefined
+        : getBrowserRTC() || opts.wrtc
+    ;
     
     var ivms = defined(opts.interval, 5000);
     var ivsize = defined(opts.size, 10);
@@ -55,11 +60,13 @@ Peernet.prototype.bootstrap = function (opts) {
     var pending = 0;
     var n = defined(opts.connections, 5);
     var ivms = defined(opts.interval, 5000);
+    var purgems = defined(opts.purge, 60 * 1000);
     
     this._intervals.push(setInterval(function () {
         var needed = n - pending - self.connections().length;
         if (needed === 0) return;
-        if (self.connections().length > 0 && Math.random() > 0.5) {
+        if (self.connections().length > 0 && self._wrtc
+        && Math.random() > 0.5) {
             pending ++;
             self.peer('webrtc', function (err, peer, addrs) {
                 pending --;
@@ -68,9 +75,11 @@ Peernet.prototype.bootstrap = function (opts) {
         else randomPeers(self.db, needed).pipe(through.obj(write));
     }, ivms));
     
-    this._intervals.push(setInterval(function () {
-        //self._purge(10);
-    }, ivms));
+    if (purgems) {
+        this._intervals.push(setInterval(function () {
+            self._purge(10);
+        }, purgems));
+    }
     
     function write (node, enc, next) {
         var addr = node.address.toString();
@@ -213,8 +222,8 @@ Peernet.prototype.connect = function (addr, cb) {
 
 Peernet.prototype.peer = function (proto, cb) {
     var self = this;
-    if (proto === 'wrtc' || proto === 'webrtc') {
-        wrtc(this, function (err, con, addrs) {
+    if ((proto === 'wrtc' || proto === 'webrtc') && self._wrtc) {
+        wrtc(this, self._wrtc, function (err, con, addrs) {
             if (err) return cb(err);
             var peer = self.createStream();
             con.pipe(peer).pipe(con);

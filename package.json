@@ -18,6 +18,7 @@
     "concat-map": "0.0.1",
     "defined": "^1.0.0",
     "end-of-stream": "^1.1.0",
+    "get-browser-rtc": "^1.0.0",
     "has": "^1.0.0",
     "inherits": "^2.0.1",
     "isarray": "^0.0.1",
@@ -35,8 +36,7 @@
     "sprintf": "^0.1.5",
     "through2": "^0.6.5",
     "transport-stream": "^1.1.0",
-    "websocket-stream": "^1.5.0",
-    "wrtc": "^0.0.55"
+    "websocket-stream": "^1.5.0"
   },
   "devDependencies": {
     "tape": "^4.0.0"
