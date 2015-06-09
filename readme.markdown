@@ -137,12 +137,10 @@ Connect to `addr`, a string address to be interpreted by `opts.transport`.
 
 Disconnect from `addr`, a string address.
 
-## var stream = pn.createStream(addr)
+## var stream = pn.createStream()
 
 Create a duplex `stream` to wire up to a remote transport. This method is useful
 for hooking up a connection from inside a server.
-
-If you know the public address of the remote peer, you can give it as `addr`.
 
 ## var cons = pn.connections()
 
@@ -206,10 +204,6 @@ peernet log
 peernet known
 
   Show all known nodes.
-
-peernet own
-
-  Show the addresses of own services.
 
 peernet connections
 

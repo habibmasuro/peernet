@@ -4,7 +4,7 @@ var wsock = require('websocket-stream');
 
 var peernet = require('../');
 var pn = peernet(db, {
-    transport: require('../transport.js'),
+    transport: require('../transport.js')(),
     debug: true
 });
-pn.save([ 'ws://localhost:39183', 'ws://localhost:33085' ]);
+pn.save([ 'ws://localhost:60669', 'ws://localhost:49356' ]);

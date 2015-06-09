@@ -14,10 +14,6 @@ peernet known
 
   Show all known nodes.
 
-peernet own
-
-  Show the addresses of own services.
-
 peernet connections
 
   Show the active connections.

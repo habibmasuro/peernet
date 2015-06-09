@@ -5,7 +5,7 @@ var path = require('path');
 var through = require('through2');
 
 var peernet = require('../');
-var transport = require('../transport.js');
+var transport = require('../transport.js')();
 var wsock = require('../server/wsock.js');
 
 var os = require('os');

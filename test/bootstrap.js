@@ -6,7 +6,7 @@ var through = require('through2');
 var shuf = require('shuffle-array');
 
 var peernet = require('../');
-var transport = require('../transport.js');
+var transport = require('../transport.js')();
 var wsock = require('../server/wsock.js');
 
 var os = require('os');
@@ -49,7 +49,8 @@ test('bootstrap setup', function (t) {
     for (var i = 0; i < 25; i++) (function () {
         var db = level(path.join(tmpdir, ''+Math.random()));
         var peer = peernet(db, {
-            transport: transport
+            transport: transport,
+            wrtc: require('wrtc')
         });
         peers.push(peer);
     })();

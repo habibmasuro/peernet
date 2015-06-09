@@ -38,7 +38,6 @@ function Peernet (db, opts) {
     this._transport = opts.transport;
     this._connections = {};
     this._peers = {};
-    this._ownAddress = {};
     this._recent = {};
     this._intervals = [];
     this._wrtc = opts.wrtc === false
@@ -242,10 +241,6 @@ Peernet.prototype.peer = function (proto, cb) {
         });
     }
     else throw new Error('unrecognized protocol');
-};
-
-Peernet.prototype.own = function (cb) {
-    cb(null, Object.keys(this._ownAddress));
 };
 
 Peernet.prototype.known = function (opts) {
@@ -505,11 +500,32 @@ Peernet.prototype.getStats = function (addr, cb) {
     }
 };
 
-Peernet.prototype.createStream = function (addr) {
+Peernet.prototype.createStream = function () {
     var self = this;
-    var peer = new Peer(self.db, self._id, addr, {
+    var peer = new Peer(self.db, self._id, {
         recent: self._recent
     });
+    
+    peer.on('hello-reply', function (id) {
+        self.emit('hello-reply', id);
+    });
+    peer.on('hello-request', function (hello) {
+        self.emit('hello-request', hello);
+    });
+    
+    peer.hello(function (err, id) {
+        self._debug('HELLO %s', id.toString('hex')); 
+        
+        if (self._id.toString('hex') === id.toString('hex')) {
+            // we've connected to ourself!
+            self._debug('connected to own service');
+            return c.destroy();
+        }
+        hello = true;
+        self._logConnection(addr, { ok: true });
+    });
+            
+    
     if (addr) peer.address = addr;
     if (addr) {
         var hello = false;
