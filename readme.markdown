@@ -92,8 +92,12 @@ resolving protocols to duplex transport streams. If you want something easy, use
 database. Default: `true`.
 * `opts.interval` - time in milliseconds to wait between requesting new nodes
 from peers. Default: 5000.
+* `opts.purge` - time in milliseconds to wait between purging dead nodes.
+Default: `60*1000`.
 * `opts.connections` - number of peer connections to bootstrap and maintain.
 Default: 5
+* `opts.wrtc` - webrtc implementation (interface like the
+[wrtc](https://npmjs.com/package/wrtc) package)
 
 ## pn.save(nodes, cb)
 
