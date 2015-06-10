@@ -35,9 +35,13 @@ function Peernet (db, opts) {
     this.db = db;
     this._options = opts;
     this._id = crypto.randomBytes(16);
+    this._hexid = this._id.toString('hex');
     this._transport = opts.transport;
-    this._connections = {};
-    this._peers = {};
+    this._streams = {}; // keyed by id
+    this._peers = {}; // map id to Peer instance
+    this._connections = {}; // keyed by addr
+    this._aliases = {}; // maps id to an array of addrs
+    
     this._recent = {};
     this._intervals = [];
     this._wrtc = opts.wrtc === false
@@ -82,13 +86,13 @@ Peernet.prototype.bootstrap = function (opts) {
     
     function write (node, enc, next) {
         var addr = node.address.toString();
-        if (has(self._ownAddress, addr)) return next();
-        if (self.connections().indexOf(addr) < 0) {
-            pending ++;
-            self.connect(addr, function (err) {
-                pending --;
-            });
-        }
+        if (has(self._connections, addr)) return next();
+        if (has(self._aliases, addr)) return next();
+        
+        pending ++;
+        self.connect(addr, function (err) {
+            pending --;
+        });
         next();
     }
 };
@@ -170,53 +174,43 @@ Peernet.prototype.connect = function (addr, cb) {
     cb = once(cb || function () {});
     var self = this;
     var c = this._transport(addr);
-    var hello = false;
     
-    this._connections[addr] = c;
-    
-    var peer = this.createStream(addr);
-    peer.on('hello-reply', function (id) {
-        self.emit('hello-reply', id);
+    var peer = this.createStream();
+    peer.on('destroy', function () {
+        if (c.destroy) c.destroy()
     });
-    peer.on('hello-request', function (hello) {
-        self.emit('hello-request', hello);
-    });
-    
-    peer.hello(addr, function (err, id) {
-        self._debug('HELLO %s', id.toString('hex')); 
-        if (self._id.toString('hex') === id.toString('hex')) {
-            // we've connected to ourself!
-            self._debug('connected to own service');
-            self._ownAddress[addr] = true;
-            return c.destroy();
-        }
-        hello = true;
-        self._logConnection(addr, { ok: true });
-    });
-    
     c.pipe(peer).pipe(c);
+    
+    var peerId = null;
+    peer.on('id', function (id) {
+        if (has(self._streams, id)) {
+            if (!self._aliases[addr]) self._aliases[addr] = [];
+            if (self._aliases[addr].indexOf(id) < 0) {
+                self._aliases[addr].push(id);
+            }
+            c.destroy();
+        }
+        else {
+            peerId = id;
+            self._peers[id] = peer;
+        }
+    });
+          
     c.once('error', cb);
-    onend(c, onclose);
+    onend(c, function () {
+        delete self._connections[addr];
+        delete self._peers[peerId];
+        if (c.destroy) c.destroy();
+    });
     
     c.once('connect', function () {
+        self._connections[addr] = c;
         self._debug('connected: %s', addr);
         self.emit('connect', peer);
         peer.emit('connect');
         cb(null);
     });
     return peer;
-    
-    function onclose () {
-        if (!hello) {
-            self._logConnection(addr, { ok: false });
-        }
-        delete self._connections[addr];
-        delete self._peers[addr];
-        if (c.destroy) c.destroy();
-        self._debug('disconnected: %s', addr);
-        self.emit('disconnect', peer);
-        peer.emit('disconnect');
-    }
 };
 
 Peernet.prototype.peer = function (proto, cb) {
@@ -505,46 +499,36 @@ Peernet.prototype.createStream = function () {
     var peer = new Peer(self.db, self._id, {
         recent: self._recent
     });
+    var hello = false;
+    var peerId = null;
     
     peer.on('hello-reply', function (id) {
         self.emit('hello-reply', id);
     });
-    peer.on('hello-request', function (hello) {
+    peer.once('hello-request', function (hello) {
         self.emit('hello-request', hello);
     });
     
     peer.hello(function (err, id) {
-        self._debug('HELLO %s', id.toString('hex')); 
+        peerId = id.toString('hex');
+        self._debug('HELLO %s', peerId);
+        peer.emit('id', peerId);
         
-        if (self._id.toString('hex') === id.toString('hex')) {
+        if (self._hexid === peerId) {
             // we've connected to ourself!
             self._debug('connected to own service');
-            return c.destroy();
+            return peer.emit('destroy');
+        }
+        if (has(self._streams, peerId)) {
+            // already connected to this peer
+            self._debug('already connected to id: %s', peerId);
+            return peer.emit('destroy');
         }
         hello = true;
-        self._logConnection(addr, { ok: true });
+        self._streams[peerId] = peer;
+        peer.emit('ok');
     });
-            
-    
-    if (addr) peer.address = addr;
-    if (addr) {
-        var hello = false;
-        peer.once('hello-request', function () {
-            if (hello) return;
-            hello = true;
-            self._logConnection(addr, { ok: true });
-        });
-        peer.once('hello-reply', function () {
-            if (hello) return;
-            hello = true;
-            self._logConnection(addr, { ok: true });
-        });
-    }
-    else {
-        addr = crypto.randomBytes(16).toString('hex');
-    }
-    self._peers[addr] = peer;
-    onend(peer, function () { delete self._peers[addr] });
+    onend(peer, onclose);
     
     peer.on('debug', function () {
         self._debug.apply(self, arguments);
@@ -552,7 +536,7 @@ Peernet.prototype.createStream = function () {
     peer.on('search', function (hash, hops, fn) {
         self.emit('search', hash, hops, fn);
         var keys = Object.keys(self._peers).filter(function (key) {
-            return key !== addr;
+            return key !== peerId;
         });
         shuffle(keys).slice(0,3).forEach(function (key) {
             self._peers[key].search(hash, hops + 1).pipe(through.obj(
@@ -569,4 +553,12 @@ Peernet.prototype.createStream = function () {
     
     self.emit('peer', peer);
     return peer;
+    
+    function onclose () {
+        if (!hello) peer.emit('failed')
+        delete self._streams[peerId];
+        self._debug('disconnected: %s', peerId);
+        self.emit('disconnect', peer);
+        peer.emit('disconnect');
+    }
 };

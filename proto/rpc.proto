@@ -22,9 +22,7 @@ message SearchResponse {
 message CloseRequest {}
 message CloseResponse {}
 
-message HelloRequest {
-  optional bytes address = 1;
-}
+message HelloRequest {}
 message HelloResponse {
     required bytes id = 1;
 }
