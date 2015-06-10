@@ -17,7 +17,7 @@ test('linear', function (t) {
     var addrs = [];
     var pending = 0;
     var n = 5;
-    t.plan(n * 2 - 1 + 2);
+    t.plan(n * 2 - 1 + 1);
     t.on('end', function () {
         peers.forEach(function (peer) {
             peer.connections().forEach(function (addr) {
@@ -65,11 +65,11 @@ test('linear', function (t) {
     }
     
     function connected () {
-        setTimeout(function () {
-            peers[0].join('whatever', function () {
-                setTimeout(search, 1000);
-            });
-        }, 1000);
+        setTimeout(search, 2000);
+        peers[0].on('search', function (hash, hops, fn) {
+            t.equal(hash.toString(), 'whatever', 'search payload');
+            fn(addrs[0]);
+        });
     }
     
     function search () {
@@ -82,8 +82,8 @@ test('linear', function (t) {
         ];
         s.pipe(through.obj(function (row, enc, next) {
             var ex = expected.shift();
-            t.equal(row.hops, ex.hops);
-            t.equal(row.address+'', ex.address+'');
+            t.equal(row.hops, ex.hops, 'expected hops');
+            t.equal(row.address+'', ex.address+'', 'expected address');
             next();
         }));
     }
