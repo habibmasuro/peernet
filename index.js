@@ -84,8 +84,8 @@ Peernet.prototype.bootstrap = function (opts) {
         }, purgems));
     }
     
-    function write (node, enc, next) {
-        var addr = node.address.toString();
+    function write (row, enc, next) {
+        var addr = row.value;
         if (has(self._connections, addr)) return next();
         if (has(self._aliases, addr)) return next();
         
@@ -178,6 +178,7 @@ Peernet.prototype._debug = function () {
 Peernet.prototype.connect = function (addr, cb) {
     cb = once(cb || function () {});
     var self = this;
+    addr = addr.toString();
     var c = this._transport(addr);
     self._connections[addr] = c;
     
