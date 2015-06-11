@@ -105,6 +105,11 @@ Peernet.prototype.close = function () {
     self.connections().forEach(function (addr) {
         self.disconnect(addr);
     });
+    Object.keys(self._streams).forEach(function (id) {
+        var stream = self._streams[id];
+        if (stream.destroy) stream.destroy()
+        else stream.end()
+    });
 };
 
 Peernet.prototype._getNodesLoop = function (ms, size) {
@@ -174,6 +179,7 @@ Peernet.prototype.connect = function (addr, cb) {
     cb = once(cb || function () {});
     var self = this;
     var c = this._transport(addr);
+    self._connections[addr] = c;
     
     var peer = this.createStream();
     peer.on('destroy', function () {
@@ -200,11 +206,9 @@ Peernet.prototype.connect = function (addr, cb) {
     onend(c, function () {
         delete self._connections[addr];
         delete self._peers[peerId];
-        if (c.destroy) c.destroy();
     });
     
     c.once('connect', function () {
-        self._connections[addr] = c;
         self._debug('connected: %s', addr);
         self.emit('connect', peer);
         peer.emit('connect');

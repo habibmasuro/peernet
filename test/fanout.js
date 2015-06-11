@@ -71,9 +71,11 @@ test('fanout', function (t) {
     
     function connected () {
         setTimeout(function () {
-            peers[0].join('whatever', function () {
-                var iv = setInterval(function () { search(iv) }, 1000);
+            peers[0].on('search', function (hash, hops, fn) {
+                t.equal(hash.toString(), 'whatever');
+                fn(addrs[0]);
             });
+            var iv = setInterval(function () { search(iv) }, 1000);
         }, 2000);
         
         var iv = setInterval(function () {
