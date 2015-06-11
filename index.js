@@ -139,17 +139,17 @@ Peernet.prototype._getNodesLoop = function (ms, size) {
         peer.getNodes({ size: size }).pipe(through.obj(write, end));
         
         function write (node, enc, next) {
-            self._debug('node from %s: %s', peer.address, node.address);
+            self._debug('node from %s: %s', peer.address, node.data.toString());
             pending ++;
             
-            self.db.get('rm!' + node.address.toString(), function (err, d) {
+            self.db.get('rm!' + node.data.toString(), function (err, d) {
                 // ignore "recently" removed nodes (in the past day)
                 if (!err && Date.now() - d < 1000 * 60 * 60 * 24) {
                     self._debug('skipping previously removed node %s',
-                        node.address
+                        node.data.toString()
                     );
                 }
-                else nodes.push(node);
+                else nodes.push(node.data.toString());
                 if (-- pending === 0) done();
             })
             next();
@@ -205,6 +205,7 @@ Peernet.prototype.connect = function (addr, cb) {
           
     c.once('error', cb);
     onend(c, function () {
+        if (c.destroy) c.destroy();
         delete self._connections[addr];
         delete self._peers[peerId];
     });
