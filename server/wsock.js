@@ -9,10 +9,6 @@ module.exports = function (pn) {
         var port = stream.socket.upgradeReq.socket.remotePort;
         pn._connections[addr + ':' + port] = stream;
         stream.pipe(pn.createStream()).pipe(stream);
-        
-        onend(stream, function () {
-            pn.disconnect(addr + ':' + port);
-        });
     });
     return server;
 };
