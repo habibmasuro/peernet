@@ -11,9 +11,6 @@
       "brfs"
     ]
   },
-  "bin": {
-    "peernet": "bin/cmd.js"
-  },
   "directories": {
     "example": "example",
     "test": "test"

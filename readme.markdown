@@ -13,30 +13,7 @@ connections, which can be obtained from peernet.
 This project is very early mad science still heavily under research and
 development.
 
-# example usage
-
-On one machine, start a websocket service:
-
-```
-$ peernet listen ws
-:::48832
-```
-
-Then from another machine (or set $PEERNET_PATH on the same machine),
-connect to the websocket service:
-
-```
-$ peernet connect ws://192.168.1.172:48832
-```
-
-Now the peers are connected!
-
-You can connect to more peers or create more services.
-
-The next time you start peernet, the network will bootstrap connections to known
-peers.
-
-# example code
+# example
 
 ``` js
 var level = require('level');
@@ -146,110 +123,33 @@ for hooking up a connection from inside a server.
 
 Return `cons`, an array of the currently connected addresses or IDs.
 
-## pn.join(subnet, cb)
+## var r = pn.announce(msg)
 
-Join `subnet`, a string or array of string subnet names.
+Broadcast a message `msg` to peers who will gossip the announcement to *their*
+peers.
 
-When an incoming search for the subnet appears, peernet will respond to the
-search query.
-
-Subnet membership persists to the database.
-
-## pn.part(subnet, cb)
-
-Part `subnet`, a string or array of string subnet names.
-
-Stop responding to search queries for the subnet.
-
-Subnet membership persists to the database.
-
-## var r = pn.search(query)
-
-Perform a search for `query`, a Buffer payload.
+* `msg.id` - optional id buffer or string. Should be globally unique. Random
+data works best because of caching used to bust routing loops. At most 64 bytes.
+* `msg.type` - optional type buffer or string to identify the kind of message.
+At most 64 bytes.
+* `msg.data` - optional data payload buffer or string. At most 1024 bytes.
+* `msg.limit` - optional maximum number of hops 
+* `msg.hops` - starting hop count. Default 0.
 
 Returns a readable object stream `r` of search rows:
 
-* `row.hash` - response subnet name
-* `row.address` - responding address
-* `row.hops` - number of hops to the responding address
+* `row.id` - response unique id
+* `row.type` - optional type of message
+* `row.data` - optional buffer payload data
+* `row.limit` - optional maximum number of hops
+* `row.hops` - number of hops from the originating response
 
 Other nodes will forward the search query along or respond themselves if they
 have relevant content.
 
-## var r = pn.subnets()
-
-Return a readable object stream `r` with all the joined subnets.
-
-Each row has a `key` property with the subnet string name as the value.
-
 ## pn.close()
 
 Shut down all intervals and disconnect from all peers.
-
-# usage
-
-```
-peernet server
-
-  Start the server in the foreground.
- 
-peernet daemon
-
-  Start the server in the background.
-
-peernet log
-
-  Print detailed lifecycle events as they arrive.
-
-peernet known
-
-  Show all known nodes.
-
-peernet connections
-
-  Show the active connections.
-
-peernet connect ADDR
-
-  Connect to ADDR.
-
-peernet disconnect ADDR.
-
-  Disconnect from ADDR.
-
-peernet add ADDR
-
-  Add ADDR to the address tables without connecting.
-
-peernet rm ADDR
-
-  Remove ADDR from the address tables.
-
-peernet join SUBNET
-
-  Join SUBNET: respond to searches for SUBNET peers.
-
-peernet part SUBNET
-
-  Part SUBNET: stop responding to searches for SUBNET peers.
-
-peernet subnets
-
-  Print subnet membership, one per line.
-
-peernet search SUBNET
-
-  Search for peers that belong to SUBNET, printing addresses per line.
-
-peernet listen PROTOCOL
-
-  Create a service for PROTOCOL, optionally on a `--port`.
-
-peernet servers
-
-  Show all local services.
-
-```
 
 # license
 
