@@ -1,8 +1,8 @@
 message Announce {
   required bytes id = 1;
-  optional bytes type = 2;
-  optional bytes data = 3;
-  optional uint32 hops = 4;
+  required uint32 hops = 2;
+  optional bytes type = 3;
+  optional bytes data = 4;
   optional uint32 limit = 5;
 }
 

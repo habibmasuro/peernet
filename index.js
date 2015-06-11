@@ -12,8 +12,8 @@ var shuffle = require('shuffle-array');
 var through = require('through2');
 var readonly = require('read-only-stream');
 var lenpre = require('length-prefixed-stream');
+var xtend = require('xtend');
 
-var decoder = require('./lib/decoder.js');
 var EventEmitter = require('events').EventEmitter;
 var getBrowserRTC = require('get-browser-rtc');
 
@@ -136,7 +136,7 @@ Peernet.prototype._getNodesLoop = function (ms, size) {
         
         var nodes = [];
         var pending = 1;
-        peer.getNodes(size).pipe(through.obj(write, end));
+        peer.getNodes({ size: size }).pipe(through.obj(write, end));
         
         function write (node, enc, next) {
             self._debug('node from %s: %s', peer.address, node.address);
@@ -249,33 +249,20 @@ Peernet.prototype.known = function (opts) {
         limit: opts.limit,
         valueEncoding: 'binary'
     });
-    if (opts.raw) {
-        var out = readonly(r.pipe(through.obj(function (row, enc, next) {
-            this.push(row.value);
-            next();
-        })).pipe(lenpre.encode()));
-        r.on('error', function (err) { out.emit('error', err) });
-        return out;
-    }
-    else {
-        var out = readonly(r.pipe(through.obj(function (row, enc, next) {
-            var ref = decoder.NodeResponse.decode(row.value)
-            this.push(JSON.stringify({
-                address: ref.address.toString('base64')
-            }) + '\n');
-            next();
-        })));
-        r.on('error', function (err) { out.emit('error', err) });
-        return out;
-    }
+    var out = readonly(r.pipe(through.obj(function (row, enc, next) {
+        this.push(row.value);
+        next();
+    })).pipe(lenpre.encode()));
+    r.on('error', function (err) { out.emit('error', err) });
+    return out;
 };
 
-Peernet.prototype.search = function (subnet) {
+Peernet.prototype.announce = function (opts) {
     var self = this;
     var output = through.obj();
     Object.keys(self._peers).forEach(function (key) {
         var peer = self._peers[key];
-        peer.search(subnet).pipe(output, { end: false });
+        peer.announce(opts).pipe(output, { end: false });
     });
     return readonly(output);
 };
@@ -291,22 +278,22 @@ Peernet.prototype.connections = function () {
     return Object.keys(this._connections);
 };
 
-Peernet.prototype.save = function (nodes, cb) {
+Peernet.prototype.save = function (addrs, cb) {
     var self = this;
-    if (!isarray(nodes)) nodes = [nodes];
-    this.db.batch(concatMap(nodes, function (node) {
-        if (typeof node === 'string') node = { address: node };
-        var key = sha(node.address).toString('hex');
+    if (!isarray(addrs)) addrs = [addrs];
+    this.db.batch(concatMap(addrs, function (addr) {
+        if (typeof node === 'string') addr = Buffer(addr);
+        var key = sha(addr).toString('hex');
         return [
             {
                 type: 'put',
                 key: 'addr!' + key,
-                value: decoder.NodeResponse.encode(node)
+                value: addr
             }
         ];
     }), { valueEncoding: 'binary' }, cb);
     
-    nodes.forEach(function (node) {
+    addrs.forEach(function (node) {
         self.emit('known', node);
     });
 };
@@ -493,13 +480,14 @@ Peernet.prototype.createStream = function () {
     peer.on('debug', function () {
         self._debug.apply(self, arguments);
     });
-    peer.on('search', function (hash, hops, fn) {
-        self.emit('search', hash, hops, fn);
+    peer.on('request', function (req, fn) {
+        self.emit('request', req, fn);
         var keys = Object.keys(self._peers).filter(function (key) {
             return key !== peerId;
         });
+        var nreq = xtend(req, { hops: req.hops + 1 });
         shuffle(keys).slice(0,3).forEach(function (key) {
-            self._peers[key].search(hash, hops + 1).pipe(through.obj(
+            self._peers[key].announce(nreq).pipe(through.obj(
                 function (row, enc, next) {
                     fn(row);
                     next();

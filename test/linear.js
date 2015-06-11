@@ -17,7 +17,7 @@ test('linear', function (t) {
     var addrs = [];
     var pending = 0;
     var n = 5;
-    t.plan(n * 2 - 1 + 1);
+    t.plan(n * 2 - 1 + 4);
     t.on('end', function () {
         peers.forEach(function (peer) {
             peer.connections().forEach(function (addr) {
@@ -66,24 +66,34 @@ test('linear', function (t) {
     
     function connected () {
         setTimeout(search, 2000);
-        peers[0].on('search', function (hash, hops, fn) {
+        peers[0].on('request:search', function (req, fn) {
+            t.equal(req.type.toString(), 'search');
+            t.equal(req.data.toString(), 'whatever', 'request:search payload');
+        });
+        peers[0].on('request', function (hash, hops, fn) {
+            t.equal(req.type.toString(), 'search');
             t.equal(hash.toString(), 'whatever', 'search payload');
             fn(addrs[0]);
         });
     }
     
     function search () {
-        var s = peers[peers.length-1].search('whatever');
+        var s = peers[peers.length-1].announce({
+            type: 'search',
+            data: 'whatever'
+        });
         var expected = [
             {
-                address: addrs[0],
+                type: 'search',
+                data: 'whatever',
                 hops: n - 2
             }
         ];
         s.pipe(through.obj(function (row, enc, next) {
             var ex = expected.shift();
             t.equal(row.hops, ex.hops, 'expected hops');
-            t.equal(row.address+'', ex.address+'', 'expected address');
+            t.equal(row.data.toString(), ex.data, 'expected data');
+            t.equal(row.type.toString(), ex.type, 'expected type');
             next();
         }));
     }
