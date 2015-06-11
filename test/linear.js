@@ -54,7 +54,7 @@ test('linear', function (t) {
         var pending = 0;
         for (var i = 1; i < peers.length; i++) {
             pending += 2;
-            peers[i].once('hello-reply', function (hello) {
+            peers[i].once('response:_hello', function (hello) {
                 if (-- pending === 0) connected();
             });
             peers[i].connect(addrs[i-1], function (err) {
@@ -70,9 +70,9 @@ test('linear', function (t) {
             t.equal(req.type.toString(), 'search');
             t.equal(req.data.toString(), 'whatever', 'request:search payload');
         });
-        peers[0].on('request', function (hash, hops, fn) {
+        peers[0].on('request', function (req, fn) {
             t.equal(req.type.toString(), 'search');
-            t.equal(hash.toString(), 'whatever', 'search payload');
+            t.equal(req.data.toString(), 'whatever', 'search payload');
             fn(addrs[0]);
         });
     }

@@ -449,13 +449,6 @@ Peernet.prototype.createStream = function () {
     var hello = false;
     var peerId = null;
     
-    peer.on('hello-reply', function (id) {
-        self.emit('hello-reply', id);
-    });
-    peer.once('hello-request', function (hello) {
-        self.emit('hello-request', hello);
-    });
-    
     peer.hello(function (err, id) {
         peerId = id.toString('hex');
         self._debug('HELLO %s', peerId);
@@ -482,6 +475,8 @@ Peernet.prototype.createStream = function () {
     });
     peer.on('request', function (req, fn) {
         self.emit('request', req, fn);
+        if (req.type) self.emit('request:' + req.type, req, fn);
+        
         var keys = Object.keys(self._peers).filter(function (key) {
             return key !== peerId;
         });
@@ -494,6 +489,10 @@ Peernet.prototype.createStream = function () {
                 }
             ));
         });
+    });
+    peer.on('response', function (res) {
+        self.emit('response', res);
+        if (res.type) self.emit('response:' + res.type, res);
     });
     peer.on('error', function (err) {
         self.emit('error', err)
