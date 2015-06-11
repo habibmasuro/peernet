@@ -1,55 +1,14 @@
-message NodeRequest {
-  optional uint32 limit = 1;
-  optional bool follow = 2 [default = false];
-  optional bytes previous = 3;
-}
-
-message NodeResponse {
-  required bytes address = 1;
-}
-
-message SearchRequest {
-  required bytes hash = 1;
-  required uint32 hops = 2;
-}
-
-message SearchResponse {
-  required bytes hash = 1;
-  required bytes address = 2;
-  required uint32 hops = 3;
-}
-
-message CloseRequest {}
-message CloseResponse {}
-
-message HelloRequest {}
-message HelloResponse {
-    required bytes id = 1;
+message Announce {
+  required bytes id = 1;
+  optional bytes type = 2;
+  optional bytes data = 3;
+  optional uint32 hops = 4;
+  optional uint32 limit = 5;
 }
 
 message Message {
   oneof msg {
-    Request request = 1;
-    Response response = 2;
-  }
-}
-
-message Request {
-  required uint32 seq = 1;
-  oneof action {
-    HelloRequest hello = 2;
-    CloseRequest close = 3;
-    NodeRequest node = 4;
-    SearchRequest search = 5;
-  }
-}
-
-message Response {
-  required uint32 seq = 1;
-  oneof reply {
-    HelloResponse hello = 2;
-    CloseResponse close = 3;
-    NodeResponse node = 4;
-    SearchResponse search = 5;
+    Announce request = 1;
+    Announce response = 2;
   }
 }
