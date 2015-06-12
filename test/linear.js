@@ -66,14 +66,14 @@ test('linear', function (t) {
     
     function connected () {
         setTimeout(search, 2000);
-        peers[0].on('request:search', function (req, fn) {
+        peers[0].on('request:search', function (req) {
             t.equal(req.type.toString(), 'search');
             t.equal(req.data.toString(), 'whatever', 'request:search payload');
         });
-        peers[0].on('request', function (req, fn) {
+        peers[0].on('request', function (req) {
             t.equal(req.type.toString(), 'search');
             t.equal(req.data.toString(), 'whatever', 'search payload');
-            fn(addrs[0]);
+            req.reply(addrs[0]);
         });
     }
     

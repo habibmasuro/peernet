@@ -475,10 +475,9 @@ Peernet.prototype.createStream = function () {
     peer.on('debug', function () {
         self._debug.apply(self, arguments);
     });
-    peer.on('request', function (req, fn) {
-        self.emit('request', req, fn);
-        if (req.type) self.emit('request:' + req.type, req, fn);
-        self._debug('request: %s', strings(req));
+    peer.on('request', function (req) {
+        self.emit('request', req);
+        if (req.type) self.emit('request:' + req.type, req);
         
         var keys = Object.keys(self._peers).filter(function (key) {
             return key !== peerId;
@@ -487,7 +486,7 @@ Peernet.prototype.createStream = function () {
         shuffle(keys).slice(0,3).forEach(function (key) {
             self._peers[key].announce(nreq).pipe(through.obj(
                 function (row, enc, next) {
-                    fn(row);
+                    req.reply(row);
                     next();
                 }
             ));
@@ -496,7 +495,6 @@ Peernet.prototype.createStream = function () {
     peer.on('response', function (res) {
         self.emit('response', res);
         if (res.type) self.emit('response:' + res.type, res);
-        self._debug('response: %s', strings(res));
     });
     peer.on('error', function (err) {
         self.emit('error', err)
@@ -513,11 +511,3 @@ Peernet.prototype.createStream = function () {
         peer.emit('disconnect');
     }
 };
-
-function strings (obj) {
-    return JSON.stringify({
-        id: obj.id.toString('hex'),
-        type: obj.type.toString(),
-        data: obj.data.toString()
-    });
-}

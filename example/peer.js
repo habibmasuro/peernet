@@ -7,4 +7,4 @@ var pn = peernet(db, {
     transport: require('../transport.js')(),
     debug: true
 });
-pn.save([ 'ws://localhost:60669', 'ws://localhost:49356' ]);
+pn.save([ 'ws://localhost:5001', 'ws://localhost:5002' ]);

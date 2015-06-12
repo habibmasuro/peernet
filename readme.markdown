@@ -151,6 +151,20 @@ have relevant content.
 
 Shut down all intervals and disconnect from all peers.
 
+# events
+
+## pn.on('request', req)
+
+When a peer sends a request to be forwarded, this event fires.
+
+Use `req.reply(msg)` to send a reply.
+
+`msg` should be an object with message properties (`id`, `type`, `data`,
+`limit`, and `hops`) that default to the originating request properties, but
+with the hop count set to `0`.
+
+If `msg` is a `Buffer` or `string`, it will be used as the `data` property. 
+
 # license
 
 MIT
