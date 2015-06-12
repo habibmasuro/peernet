@@ -378,7 +378,7 @@ Peernet.prototype._purge = function (n, cb) {
     randomPeers(self.db, n).pipe(through.obj(write, end));
     
     function write (row, enc, next) {
-        var addr = row.address.toString();
+        var addr = row.value.toString();
         pending ++;
         self.getStats(addr, function (err, stats) {
             if (err) return;
