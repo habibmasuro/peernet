@@ -4,6 +4,7 @@ var level = require('level');
 var path = require('path');
 var through = require('through2');
 var shuf = require('shuffle-array');
+var wrtc = require('wrtc');
 
 var peernet = require('../');
 var transport = require('../transport.js')();
@@ -27,7 +28,7 @@ test('bootstrap setup', function (t) {
         var db = level(path.join(tmpdir, ''+Math.random()));
         var peer = peernet(db, {
             transport: transport,
-            interval: 2000,
+            interval: 500,
             connections: 10
             //debug: true
         });
@@ -50,7 +51,7 @@ test('bootstrap setup', function (t) {
         var db = level(path.join(tmpdir, ''+Math.random()));
         var peer = peernet(db, {
             transport: transport,
-            wrtc: require('wrtc')
+            wrtc: wrtc
         });
         peers.push(peer);
     })();
@@ -85,7 +86,7 @@ test('bootstrap', function (t) {
         console.log('STATS:', stats);
         t.ok(stats.ws >= 50, 'enough websocket connections');
         t.ok(stats.wrtc >= 50, 'enough webrtc connections');
-    }, 1000*10);
+    }, 1000*30);
 });
 
 test('bootstrap teardown', function (t) {

@@ -32,6 +32,7 @@ inherits(Peernet, EventEmitter);
 function Peernet (db, opts) {
     if (!(this instanceof Peernet)) return new Peernet(db, opts);
     var self = this;
+    EventEmitter.call(this);
     this.db = db;
     this._options = opts;
     this._id = crypto.randomBytes(16);
@@ -186,9 +187,7 @@ Peernet.prototype.connect = function (addr, cb) {
     peer.on('destroy', function () {
         if (c.destroy) c.destroy()
     });
-    c.pipe(peer).pipe(c);
     
-    var peerId = null;
     peer.on('id', function (id) {
         if (has(self._streams, id)) {
             if (!self._aliases[addr]) self._aliases[addr] = [];
@@ -197,17 +196,13 @@ Peernet.prototype.connect = function (addr, cb) {
             }
             c.destroy();
         }
-        else {
-            peerId = id;
-            self._peers[id] = peer;
-        }
     });
-          
+    c.pipe(peer).pipe(c);
+    
     c.once('error', cb);
     onend(c, function () {
         if (c.destroy) c.destroy();
         delete self._connections[addr];
-        delete self._peers[peerId];
     });
     
     c.once('connect', function () {
@@ -222,22 +217,24 @@ Peernet.prototype.connect = function (addr, cb) {
 Peernet.prototype.peer = function (proto, cb) {
     var self = this;
     if ((proto === 'wrtc' || proto === 'webrtc') && self._wrtc) {
-        wrtc(this, self._wrtc, function (err, con, addrs) {
+        wrtc(self, self._wrtc, function (err, con) {
             if (err) return cb(err);
             var peer = self.createStream();
+            var peerId = null;
+            peer.on('id', function (id) {
+                peerId = id;
+                self._debug('connected: %s', peerId);
+            });
             con.pipe(peer).pipe(con);
             
-            self._connections[addrs.local] = con;
             onend(con, function () {
-                delete self._connections[addrs.local];
                 self.emit('disconnect', peer);
-                self._debug('disconnected: %s', addrs.remote);
+                self._debug('disconnected %s', String(peerId));
                 peer.emit('disconnect');
             });
             
-            self._debug('connected: %s', addrs.local);
             self.emit('connect', peer);
-            cb(err, con, addrs);
+            cb(err, con);
         });
     }
     else throw new Error('unrecognized protocol');
@@ -451,6 +448,19 @@ Peernet.prototype.createStream = function () {
     var hello = false;
     var peerId = null;
     
+    // ------------------------------------
+    peer.on('id', function (id) {
+        if (has(self._streams, id)) {
+            if (!self._aliases[addr]) self._aliases[addr] = [];
+            if (self._aliases[addr].indexOf(id) < 0) {
+                self._aliases[addr].push(id);
+            }
+            c.destroy();
+        }
+        peerId = id;
+        self._peers[id] = peer;
+    });
+    
     peer.hello(function (err, id) {
         peerId = id.toString('hex');
         self._debug('HELLO %s', peerId);
@@ -506,6 +516,7 @@ Peernet.prototype.createStream = function () {
     function onclose () {
         if (!hello) peer.emit('failed')
         delete self._streams[peerId];
+        delete self._peers[peerId];
         self._debug('disconnected: %s', peerId);
         self.emit('disconnect', peer);
         peer.emit('disconnect');
