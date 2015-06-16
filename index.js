@@ -43,7 +43,8 @@ function Peernet (db, opts) {
     this._connections = {}; // keyed by addr
     this._aliases = {}; // maps id to an array of addrs
     
-    this._recent = {};
+    this._recent = { request: {}, response: {} };
+    this._origin = {};
     this._intervals = [];
     this._wrtc = opts.wrtc === false
         ? undefined
@@ -133,8 +134,6 @@ Peernet.prototype._getNodesLoop = function (ms, size) {
     });
     
     function getNodes (peer, cb) {
-        self._debug('get nodes: %s', peer.address);
-        
         var nodes = [];
         var pending = 1;
         peer.getNodes({ size: size }).pipe(through.obj(write, end));
@@ -489,6 +488,9 @@ Peernet.prototype.createStream = function () {
         self.emit('request', req);
         if (req.type) self.emit('request:' + req.type, req);
         
+        if (peerId) {
+            self._origin[req.id.toString('hex')] = peerId;
+        }
         var keys = Object.keys(self._peers).filter(function (key) {
             return key !== peerId;
         });
@@ -505,6 +507,14 @@ Peernet.prototype.createStream = function () {
     peer.on('response', function (res) {
         self.emit('response', res);
         if (res.type) self.emit('response:' + res.type, res);
+        
+        var hexid = res.id.toString('hex');
+        if (has(self._origin, hexid)
+        && has(self._peers, self._origin[hexid])) {
+            self._peers[self._origin[hexid]]._pushMessage({
+                response: res
+            });
+        }
     });
     peer.on('error', function (err) {
         self.emit('error', err)
