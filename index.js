@@ -512,7 +512,18 @@ Peernet.prototype.createStream = function () {
         if (has(self._origin, hexid)
         && has(self._peers, self._origin[hexid])) {
             self._peers[self._origin[hexid]]._pushMessage({
-                response: res
+                response: xtend(res, { hops: res.hops + 1 })
+            });
+        }
+        else {
+            var keys = Object.keys(self._peers).filter(function (key) {
+                return key !== peerId;
+            });
+            var nres = xtend(res, { hops: res.hops + 1 });
+            shuffle(keys).slice(0,3).forEach(function (key) {
+                self._peers[key]._pushMessage({
+                    response: nres
+                });
             });
         }
     });
