@@ -1,9 +1,10 @@
 message Announce {
   required bytes id = 1;
   required uint32 hops = 2;
-  optional bytes type = 3;
-  optional bytes data = 4;
-  optional uint32 limit = 5;
+  optional bytes reply = 3;
+  optional bytes type = 4;
+  optional bytes data = 5;
+  optional uint32 limit = 6;
 }
 
 message Message {

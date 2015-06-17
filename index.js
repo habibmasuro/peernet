@@ -139,7 +139,7 @@ Peernet.prototype._getNodesLoop = function (ms, size) {
         peer.getNodes({ size: size }).pipe(through.obj(write, end));
         
         function write (node, enc, next) {
-            self._debug('node from %s: %s', peer.address, node.data.toString());
+            self._debug('node reply: %s', node.data.toString());
             pending ++;
             
             self.db.get('rm!' + node.data.toString(), function (err, d) {
@@ -512,7 +512,9 @@ Peernet.prototype.createStream = function () {
         if (has(self._origin, hexid)
         && has(self._peers, self._origin[hexid])) {
             self._peers[self._origin[hexid]]._pushMessage({
-                response: xtend(res, { hops: res.hops + 1 })
+                response: xtend(res, {
+                    hops: res.hops + 1
+                })
             });
         }
         else {

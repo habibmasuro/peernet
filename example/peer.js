@@ -1,5 +1,5 @@
 var level = require('level-browserify');
-var db = level('./peer.db', { valueEncoding: 'binary' });
+var db = level('/tmp/' + Math.random(), { valueEncoding: 'binary' });
 var wsock = require('websocket-stream');
 
 var peernet = require('../');
