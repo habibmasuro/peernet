@@ -45,6 +45,7 @@ function Peernet (db, opts) {
     
     this._recent = { request: {}, response: {} };
     this._origin = {};
+    this._originQueue = [];
     this._intervals = [];
     this._wrtc = opts.wrtc === false
         ? undefined
@@ -477,6 +478,9 @@ Peernet.prototype.createStream = function () {
         }
         hello = true;
         self._streams[peerId] = peer;
+        self._originQueue.splice(0).forEach(function (f) {
+            f(peerId);
+        });
         peer.emit('ok');
     });
     onend(peer, onclose);
@@ -488,11 +492,14 @@ Peernet.prototype.createStream = function () {
         self.emit('request', req);
         if (req.type) self.emit('request:' + req.type, req);
         
-        if (peerId) {
-            self._origin[req.id.toString('hex')] = peerId;
-        }
+        if (peerId) onrequest(req, peerId)
+        else self._originQueue.push(function (id) { onrequest(req, id) });
+    });
+    
+    function onrequest (req, id) {
+        self._origin[req.id.toString('hex')] = id;
         var keys = Object.keys(self._peers).filter(function (key) {
-            return key !== peerId;
+            return key !== id;
         });
         var nreq = xtend(req, { hops: req.hops + 1 });
         shuffle(keys).slice(0,3).forEach(function (key) {
@@ -503,13 +510,14 @@ Peernet.prototype.createStream = function () {
                 }
             ));
         });
-    });
+    }
+    
     peer.on('response', function (res) {
         self.emit('response', res);
         if (res.type) self.emit('response:' + res.type, res);
         
-        var hexid = res.id.toString('hex');
-        if (has(self._origin, hexid)
+        var hexid = res.reply && res.reply.toString('hex');
+        if (hexid && has(self._origin, hexid)
         && has(self._peers, self._origin[hexid])) {
             self._peers[self._origin[hexid]]._pushMessage({
                 response: xtend(res, {
