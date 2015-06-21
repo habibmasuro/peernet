@@ -28,7 +28,7 @@ test('bootstrap setup', function (t) {
         var db = level(path.join(tmpdir, ''+Math.random()));
         var peer = peernet(db, {
             transport: transport,
-            interval: 500,
+            //interval: 500,
             connections: 10
             //debug: true
         });
@@ -51,7 +51,8 @@ test('bootstrap setup', function (t) {
         var db = level(path.join(tmpdir, ''+Math.random()));
         var peer = peernet(db, {
             transport: transport,
-            wrtc: wrtc
+            wrtc: wrtc,
+            connections: 10
         });
         peers.push(peer);
     })();
@@ -86,7 +87,7 @@ test('bootstrap', function (t) {
         console.log('STATS:', stats);
         t.ok(stats.ws >= 50, 'enough websocket connections');
         t.ok(stats.wrtc >= 50, 'enough webrtc connections');
-    }, 1000*30);
+    }, 1000*60*3);
 });
 
 test('bootstrap teardown', function (t) {
